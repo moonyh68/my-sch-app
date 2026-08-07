@@ -80,7 +80,7 @@ def delete_google_calendar_event(event_id):
         return False, str(e)
 
 # ---------------------------------------------------------
-# Custom CSS (요일 경계선 제거 및 일자 글씨체 강화)
+# Custom CSS (일자 날짜 글씨 극대화 및 선명도 향상)
 # ---------------------------------------------------------
 st.markdown("""
     <style>
@@ -111,8 +111,8 @@ st.markdown("""
 
     /* 달력 각 일자별 열(Column) 구분 세로선 및 가로선 경계 스타일 */
     div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
-        border-right: 1px solid #E2E8F0 !important; /* 오른쪽 세로 경계선 */
-        border-bottom: 1px solid #E2E8F0 !important; /* 아래쪽 가로 경계선 */
+        border-right: 1px solid #E2E8F0 !important; 
+        border-bottom: 1px solid #E2E8F0 !important; 
         padding: 4px 6px !important;
         min-height: 90px !important;
     }
@@ -122,32 +122,38 @@ st.markdown("""
         border-left: 1px solid #E2E8F0 !important;
     }
 
-    /* ★ 일자(날짜) 글씨체 진하게 (Bold 800) 강조 */
-    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button {
+    /* ★ [핵심] 일자(1일, 2일 등) 글씨체를 굵고 선명한 흑색으로 강력 변경 */
+    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button,
+    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button p,
+    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button div {
         background-color: transparent !important;
         border: none !important;
-        color: #1E293B !important;                 /* 진한 글자색 */
+        color: #0F172A !important;                 /* 매우 진한 흑슬레이트 색상 */
         padding: 2px 2px !important;
         min-height: 26px !important;
-        font-size: 14px !important;                 /* 글자 크기 약간 확대 */
-        font-weight: 800 !important;                 /* 아주 진하게(Bold 800) */
+        font-size: 15px !important;                 /* 글자 크기 선명하게 확대 */
+        font-weight: 900 !important;                 /* 최상위 굵기(Bold 900) */
         border-radius: 20px !important;
         box-shadow: none !important;
         transition: all 0.15s ease-in-out !important;
         margin-bottom: 2px !important;
+        letter-spacing: -0.5px !important;
+        -webkit-font-smoothing: antialiased !important;
     }
 
-    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button:hover {
+    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button:hover,
+    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button:hover p {
         background-color: #F1F5F9 !important;
         color: #0284C7 !important;
     }
 
-    /* '오늘' 날짜 원형 하이라이트 */
-    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[kind="primary"] {
+    /* '오늘' 날짜 원형 하이라이트 (텍스트 하얗고 진하게 유지) */
+    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[kind="primary"],
+    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[kind="primary"] p {
         background-color: #0284C7 !important;
         border: none !important;
         color: #FFFFFF !important;
-        font-weight: 800 !important;
+        font-weight: 900 !important;
         border-radius: 20px !important;
     }
 
@@ -162,7 +168,7 @@ st.markdown("""
     /* 연한 파스텔톤 일정 배경 카드 */
     .task-item {
         font-size: 11px !important;
-        font-weight: 400 !important;
+        font-weight: 500 !important;
         color: #0F172A !important;
         line-height: 1.3 !important;
         margin-bottom: 2px !important;
@@ -244,9 +250,10 @@ st.markdown("""
             min-height: 70px !important;
         }
 
-        div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button {
+        div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button,
+        div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button p {
             font-size: 11px !important;
-            font-weight: 800 !important;
+            font-weight: 900 !important;
             min-height: 24px !important;
             padding: 1px 0px !important;
         }
@@ -509,7 +516,6 @@ if st.session_state.get("cal_status") == "error":
 # =================================-------------------------
 days_of_week = [("일", "#EF4444"), ("월", "#334155"), ("화", "#334155"), ("수", "#334155"), ("목", "#334155"), ("금", "#334155"), ("토", "#2563EB")]
 
-# ★ 요일 영역: 하단 경계선(border-bottom) 제거하여 깔끔하게 변경
 cols = st.columns(7)
 for idx, (day_name, color_code) in enumerate(days_of_week):
     cols[idx].markdown(f"<div style='text-align: center; color: {color_code}; font-weight: 800; font-size: 15px; padding: 4px 0; border: none; margin-bottom: 4px;'>{day_name}</div>", unsafe_allow_html=True)
