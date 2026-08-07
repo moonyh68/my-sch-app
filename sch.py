@@ -80,15 +80,15 @@ def delete_google_calendar_event(event_id):
         return False, str(e)
 
 # ---------------------------------------------------------
-# Custom CSS
+# Custom CSS (버튼 높이 최소화 적용)
 # ---------------------------------------------------------
 st.markdown("""
     <style>
     .block-container {
-        padding-top: 2.0rem !important;
+        padding-top: 1.5rem !important;
         padding-bottom: 1rem !important;
-        padding-left: 0.6rem !important;
-        padding-right: 0.6rem !important;
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
         max-width: 100% !important;
     }
     
@@ -97,7 +97,7 @@ st.markdown("""
     }
 
     hr {
-        margin: 0.8rem 0 !important;
+        margin: 0.5rem 0 !important;
         border-color: #E2E8F0 !important;
     }
 
@@ -113,8 +113,8 @@ st.markdown("""
     div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
         border-right: 1px solid #E2E8F0 !important; 
         border-bottom: 1px solid #E2E8F0 !important; 
-        padding: 4px 6px !important;
-        min-height: 90px !important;
+        padding: 2px 4px !important;
+        min-height: 80px !important;
     }
 
     /* 첫 번째 열(일요일) 왼쪽 세로 테두리 추가 */
@@ -122,21 +122,23 @@ st.markdown("""
         border-left: 1px solid #E2E8F0 !important;
     }
 
-    /* 일자 글씨체 */
+    /* ★ [핵심] 일자 날짜 버튼 높이 최소화 (min-height: 18px, padding: 0px) */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button,
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button p,
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button div {
         background-color: transparent !important;
         border: none !important;
         color: #475569 !important;
-        padding: 2px 2px !important;
-        min-height: 25px !important;
-        font-size: 13.5px !important;
+        padding: 0px 2px !important;
+        min-height: 18px !important;
+        height: 20px !important;
+        line-height: 20px !important;
+        font-size: 13px !important;
         font-weight: 700 !important;
-        border-radius: 20px !important;
+        border-radius: 10px !important;
         box-shadow: none !important;
         transition: all 0.15s ease-in-out !important;
-        margin-bottom: 2px !important;
+        margin-bottom: 1px !important;
         letter-spacing: normal !important;
         -webkit-font-smoothing: antialiased !important;
     }
@@ -147,14 +149,14 @@ st.markdown("""
         color: #0284C7 !important;
     }
 
-    /* '오늘' 날짜 원형 하이라이트 */
+    /* '오늘' 날짜 원형 하이라이트 (높이 최적화) */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[kind="primary"],
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[kind="primary"] p {
         background-color: #0284C7 !important;
         border: none !important;
         color: #FFFFFF !important;
         font-weight: 800 !important;
-        border-radius: 20px !important;
+        border-radius: 10px !important;
     }
 
     /* 일정 텍스트 컨테이너 */
@@ -162,7 +164,7 @@ st.markdown("""
         background-color: transparent !important;
         border: none !important;
         padding: 0px !important;
-        margin-top: 2px !important;
+        margin-top: 1px !important;
     }
 
     /* 연한 파스텔톤 일정 배경 카드 */
@@ -170,12 +172,12 @@ st.markdown("""
         font-size: 11px !important;
         font-weight: 400 !important;
         color: #0F172A !important;
-        line-height: 1.3 !important;
+        line-height: 1.2 !important;
         margin-bottom: 2px !important;
         white-space: normal !important;
         word-break: break-all !important;
-        padding: 2px 4px !important;
-        border-radius: 4px !important;
+        padding: 1px 3px !important;
+        border-radius: 3px !important;
         background-color: #F0F9FF !important;
         border-left: 3px solid #38BDF8 !important;
     }
@@ -193,16 +195,18 @@ st.markdown("""
         color: #92400E !important;
     }
 
-    /* 네비게이션 버튼 (이전달/다음달) */
+    /* 네비게이션 버튼 (이전달/다음달 높이 최적화) */
     div.stButton > button[key="btn_prev_month"], 
     div.stButton > button[key="btn_next_month"] {
         background-color: #F1F5F9 !important;
         border: 1px solid #CBD5E1 !important;
         color: #334155 !important;
         font-weight: 700 !important;
-        font-size: 13px !important;
-        border-radius: 20px !important;
-        padding: 5px 14px !important;
+        font-size: 12px !important;
+        min-height: 26px !important;
+        height: 28px !important;
+        border-radius: 14px !important;
+        padding: 2px 10px !important;
     }
 
     div.stButton > button[key="btn_prev_month"]:hover, 
@@ -215,16 +219,17 @@ st.markdown("""
         background-color: #166534 !important;
         color: white !important;
         font-weight: bold !important;
-        font-size: 15px !important;
-        border-radius: 8px !important;
+        font-size: 14px !important;
+        min-height: 32px !important;
+        border-radius: 6px !important;
     }
 
     /* 하단 KPI 대시보드 카드 스타일 */
     .kpi-card {
         background-color: #FFFFFF !important;
         border: 1px solid #E2E8F0 !important;
-        border-radius: 10px !important;
-        padding: 10px 12px !important;
+        border-radius: 8px !important;
+        padding: 6px 10px !important;
         box-shadow: 0 1px 2px rgba(0,0,0,0.02) !important;
         text-align: center !important;
     }
@@ -232,7 +237,7 @@ st.markdown("""
     /* 📱 [모바일 반응형 CSS] */
     @media (max-width: 768px) {
         .block-container {
-            padding-top: 1.5rem !important;
+            padding-top: 1.0rem !important;
         }
 
         div[data-testid="stHorizontalBlock"] {
@@ -246,23 +251,25 @@ st.markdown("""
             width: 14.28% !important;
             min-width: 0px !important;
             flex: 1 1 14.28% !important;
-            padding: 2px 1px !important;
-            min-height: 70px !important;
+            padding: 1px 1px !important;
+            min-height: 60px !important;
         }
 
         div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button,
         div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button p {
-            font-size: 11px !important;
+            font-size: 10.5px !important;
             font-weight: 700 !important;
-            min-height: 24px !important;
-            padding: 1px 0px !important;
+            min-height: 16px !important;
+            height: 18px !important;
+            line-height: 18px !important;
+            padding: 0px !important;
         }
 
         .task-item {
-            font-size: 9.5px !important;
-            line-height: 1.2 !important;
-            margin-bottom: 2px !important;
-            padding: 1px 2px !important;
+            font-size: 9px !important;
+            line-height: 1.1 !important;
+            margin-bottom: 1px !important;
+            padding: 1px 1px !important;
         }
     }
     </style>
@@ -346,7 +353,7 @@ def insert_task(task_date, start_time, end_time, title, memo, is_done, is_meetin
     return cal_success, cal_err
 
 def update_task_full(target_id, task_date, start_time, end_time, title, memo, is_meeting, meeting_notes):
-    """[검증 완료] 단일 일정 수정 로직 - ID 문자열 정규화 비교"""
+    """단일 일정 수정 로직 - ID 문자열 정규화 비교"""
     df = fetch_all_tasks()
     if df.empty:
         return True, None
@@ -394,7 +401,7 @@ def update_task_done(target_id, is_done):
         save_all_tasks(df)
 
 def delete_task(target_id):
-    """★ [완벽 검증] 지정한 단 1개의 ID만 안전 삭제"""
+    """지정한 단 1개의 ID만 안전 삭제"""
     df = fetch_all_tasks()
     if df.empty:
         return True, None
@@ -402,20 +409,16 @@ def delete_task(target_id):
     target_id_str = str(int(target_id))
     df['id_str'] = df['id'].astype(str).str.strip()
     
-    # 해당 ID 행 탐색
     matched = df[df['id_str'] == target_id_str]
     if not matched.empty:
         idx = matched.index[0]
         event_id = str(df.loc[idx, 'event_id']) if 'event_id' in df.columns else ""
         
-        # 지정된 target_id_str 이 아닌 항목들만 남기기 (오직 대상 1개만 제외)
         updated_df = df[df['id_str'] != target_id_str].copy()
         updated_df = updated_df.drop(columns=['id_str'])
         
-        # 인덱스 깨짐 방지 및 구글 시트 저장
         save_all_tasks(updated_df)
         
-        # 구글 캘린더 해당 단일 일정 삭제
         cal_success, cal_err = delete_google_calendar_event(event_id)
         return cal_success, cal_err
         
@@ -434,7 +437,7 @@ year = st.session_state.current_year
 month = st.session_state.current_month
 
 # ---------------------------------------------------------
-# 3. 팝업 모달 다이얼로그 (Form Key 충돌 및 ID 혼선 방지)
+# 3. 팝업 모달 다이얼로그
 # ---------------------------------------------------------
 @st.dialog("📅 일자별 상세 일정 및 회의록", width="large")
 def open_day_modal(target_date):
@@ -560,7 +563,7 @@ def open_day_modal(target_date):
 # [1단] 최상단 년/월 표시 및 에러 상태 메시지 영역
 # =================================-------------------------
 st.markdown(
-    f"<h2 style='text-align: center; font-weight: 800; font-size: 26px; margin: 0 0 10px 0; padding: 0;'><span style='color: #1E3A8A;'>{year}년</span> <span style='color: #166534;'>{month}월</span></h2>",
+    f"<h2 style='text-align: center; font-weight: 800; font-size: 24px; margin: 0 0 8px 0; padding: 0;'><span style='color: #1E3A8A;'>{year}년</span> <span style='color: #166534;'>{month}월</span></h2>",
     unsafe_allow_html=True
 )
 
@@ -574,7 +577,7 @@ days_of_week = [("일", "#EF4444"), ("월", "#334155"), ("화", "#334155"), ("�
 
 cols = st.columns(7)
 for idx, (day_name, color_code) in enumerate(days_of_week):
-    cols[idx].markdown(f"<div style='text-align: center; color: {color_code}; font-weight: 800; font-size: 15px; padding: 4px 0; border: none; margin-bottom: 4px;'>{day_name}</div>", unsafe_allow_html=True)
+    cols[idx].markdown(f"<div style='text-align: center; color: {color_code}; font-weight: 800; font-size: 14px; padding: 2px 0; border: none; margin-bottom: 2px;'>{day_name}</div>", unsafe_allow_html=True)
 
 month_df = fetch_month_tasks(year, month)
 
@@ -687,31 +690,31 @@ kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 with kpi1:
     st.markdown(f"""
         <div class="kpi-card">
-            <p style="font-size: 13px; font-weight: 700; color: #64748B; margin-bottom: 2px;">월간 총 업무</p>
-            <h3 style="font-size: 22px; font-weight: 800; color: #1E3A8A; margin: 0;">{total_tasks}건</h3>
+            <p style="font-size: 12px; font-weight: 700; color: #64748B; margin-bottom: 2px;">월간 총 업무</p>
+            <h3 style="font-size: 20px; font-weight: 800; color: #1E3A8A; margin: 0;">{total_tasks}건</h3>
         </div>
     """, unsafe_allow_html=True)
 
 with kpi2:
     st.markdown(f"""
         <div class="kpi-card">
-            <p style="font-size: 13px; font-weight: 700; color: #64748B; margin-bottom: 2px;">완료된 업무</p>
-            <h3 style="font-size: 22px; font-weight: 800; color: #166534; margin: 0;">{done_tasks}건</h3>
+            <p style="font-size: 12px; font-weight: 700; color: #64748B; margin-bottom: 2px;">완료된 업무</p>
+            <h3 style="font-size: 20px; font-weight: 800; color: #166534; margin: 0;">{done_tasks}건</h3>
         </div>
     """, unsafe_allow_html=True)
 
 with kpi3:
     st.markdown(f"""
         <div class="kpi-card">
-            <p style="font-size: 13px; font-weight: 700; color: #64748B; margin-bottom: 2px;">총 회의 건수</p>
-            <h3 style="font-size: 22px; font-weight: 800; color: #D97706; margin: 0;">{meeting_tasks}건</h3>
+            <p style="font-size: 12px; font-weight: 700; color: #64748B; margin-bottom: 2px;">총 회의 건수</p>
+            <h3 style="font-size: 20px; font-weight: 800; color: #D97706; margin: 0;">{meeting_tasks}건</h3>
         </div>
     """, unsafe_allow_html=True)
 
 with kpi4:
     st.markdown(f"""
         <div class="kpi-card">
-            <p style="font-size: 13px; font-weight: 700; color: #64748B; margin-bottom: 2px;">이행률 (완료율)</p>
-            <h3 style="font-size: 22px; font-weight: 800; color: #7C3AED; margin: 0;">{completion_rate}%</h3>
+            <p style="font-size: 12px; font-weight: 700; color: #64748B; margin-bottom: 2px;">이행률 (완료율)</p>
+            <h3 style="font-size: 20px; font-weight: 800; color: #7C3AED; margin: 0;">{completion_rate}%</h3>
         </div>
     """, unsafe_allow_html=True)
