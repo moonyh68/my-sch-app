@@ -80,7 +80,7 @@ def delete_google_calendar_event(event_id):
         return False, str(e)
 
 # ---------------------------------------------------------
-# Custom CSS (고급 디테일 UI 최적화)
+# Custom CSS (전체 노출 및 글씨체 굵기 조정)
 # ---------------------------------------------------------
 st.markdown("""
     <style>
@@ -138,7 +138,7 @@ st.markdown("""
         font-weight: 800 !important;
     }
 
-    /* 일정 텍스트 밀착 박스 */
+    /* 일정 텍스트 컨테이너 */
     .task-container {
         background-color: transparent !important;
         border: none !important;
@@ -146,16 +146,16 @@ st.markdown("""
         margin-top: -0.1px !important;
     }
 
+    /* ★ 일정 텍스트 전체 노출 & 굵지 않은 글씨 스타일 */
     .task-item {
-        font-size: 12px !important;
-        font-weight: 600 !important;
+        font-size: 11.5px !important;
+        font-weight: 400 !important;  /* 일반 굵기 */
         color: #334155 !important;
-        line-height: 1.3 !important;
+        line-height: 1.35 !important;
         margin-bottom: 2px !important;
-        white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        padding: 1px 3px !important;
+        white-space: normal !important; /* 잘림 없이 줄바꿈하여 전체 표시 */
+        word-break: break-all !important;
+        padding: 2px 4px !important;
         border-radius: 4px !important;
         background-color: #F1F5F9 !important;
     }
@@ -233,11 +233,12 @@ st.markdown("""
         }
 
         .task-item {
-            font-size: 10.5px !important;
-            line-height: 1.2 !important;
+            font-size: 10px !important;
+            font-weight: 400 !important;
+            line-height: 1.25 !important;
             letter-spacing: -0.5px !important;
             margin-bottom: 1px !important;
-            padding: 0px 1px !important;
+            padding: 1px 2px !important;
         }
     }
     </style>
@@ -528,7 +529,7 @@ for week in month_calendar:
                 if st.button(btn_label, key=f"btn_day_{day}", type=btn_type, use_container_width=True):
                     open_day_modal(curr_date)
 
-                # 일정 배지(Badge) 형태 카드
+                # 일정 전체 노출 카드 (생략 없음)
                 if day_total > 0:
                     task_items = []
                     for _, t in day_tasks.iterrows():
@@ -541,7 +542,7 @@ for week in month_calendar:
                             css_class += " task-item-meeting"
                             icon = "📝"
                         
-                        task_items.append(f"<div class='{css_class}'>{icon} {t['start_time']} {str(t['title'])[:6]}</div>")
+                        task_items.append(f"<div class='{css_class}'>{icon} {t['start_time']} {str(t['title'])}</div>")
                     tasks_html = "".join(task_items)
                     st.markdown(f"<div class='task-container'>{tasks_html}</div>", unsafe_allow_html=True)
 
@@ -600,7 +601,7 @@ with col_nav3:
 st.divider()
 
 # =================================-------------------------
-# [4단] 입체감 있는 카드형 대시보드 요약
+# [4단] 카드형 대시보드 요약
 # =================================-------------------------
 total_tasks = len(month_df) if not month_df.empty else 0
 done_tasks = len(month_df[month_df['is_done'] == 1]) if total_tasks > 0 else 0
