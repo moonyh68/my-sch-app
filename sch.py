@@ -80,7 +80,7 @@ def delete_google_calendar_event(event_id):
         return False, str(e)
 
 # ---------------------------------------------------------
-# Custom CSS (일자 간 경계선 Grid 추가)
+# Custom CSS (요일 경계선 제거 및 일자 글씨체 강화)
 # ---------------------------------------------------------
 st.markdown("""
     <style>
@@ -109,12 +109,12 @@ st.markdown("""
         margin-bottom: 0px !important;
     }
 
-    /* ★ [핵심] 달력 각 일자별 열(Column) 구분 세로선 및 가로선 경계 스타일 */
+    /* 달력 각 일자별 열(Column) 구분 세로선 및 가로선 경계 스타일 */
     div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
         border-right: 1px solid #E2E8F0 !important; /* 오른쪽 세로 경계선 */
         border-bottom: 1px solid #E2E8F0 !important; /* 아래쪽 가로 경계선 */
         padding: 4px 6px !important;
-        min-height: 90px !important; /* 일자 박스 세로 높이 고정 */
+        min-height: 90px !important;
     }
 
     /* 첫 번째 열(일요일) 왼쪽 세로 테두리 추가 */
@@ -122,15 +122,15 @@ st.markdown("""
         border-left: 1px solid #E2E8F0 !important;
     }
 
-    /* 날짜 버튼 스타일 (미니멀) */
+    /* ★ 일자(날짜) 글씨체 진하게 (Bold 800) 강조 */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button {
         background-color: transparent !important;
         border: none !important;
-        color: #475569 !important;
+        color: #1E293B !important;                 /* 진한 글자색 */
         padding: 2px 2px !important;
         min-height: 26px !important;
-        font-size: 13px !important;
-        font-weight: 700 !important;
+        font-size: 14px !important;                 /* 글자 크기 약간 확대 */
+        font-weight: 800 !important;                 /* 아주 진하게(Bold 800) */
         border-radius: 20px !important;
         box-shadow: none !important;
         transition: all 0.15s ease-in-out !important;
@@ -246,7 +246,7 @@ st.markdown("""
 
         div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button {
             font-size: 11px !important;
-            font-weight: 700 !important;
+            font-weight: 800 !important;
             min-height: 24px !important;
             padding: 1px 0px !important;
         }
@@ -509,9 +509,10 @@ if st.session_state.get("cal_status") == "error":
 # =================================-------------------------
 days_of_week = [("일", "#EF4444"), ("월", "#334155"), ("화", "#334155"), ("수", "#334155"), ("목", "#334155"), ("금", "#334155"), ("토", "#2563EB")]
 
+# ★ 요일 영역: 하단 경계선(border-bottom) 제거하여 깔끔하게 변경
 cols = st.columns(7)
 for idx, (day_name, color_code) in enumerate(days_of_week):
-    cols[idx].markdown(f"<div style='text-align: center; color: {color_code}; font-weight: 800; font-size: 15px; padding: 3px 0; border-top: 1px solid #E2E8F0; border-bottom: 2px solid #CBD5E1; margin-bottom: 0px;'>{day_name}</div>", unsafe_allow_html=True)
+    cols[idx].markdown(f"<div style='text-align: center; color: {color_code}; font-weight: 800; font-size: 15px; padding: 4px 0; border: none; margin-bottom: 4px;'>{day_name}</div>", unsafe_allow_html=True)
 
 month_df = fetch_month_tasks(year, month)
 
