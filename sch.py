@@ -80,7 +80,7 @@ def delete_google_calendar_event(event_id):
         return False, str(e)
 
 # ---------------------------------------------------------
-# Custom CSS (버튼 높이 최소화 및 파스텔톤 배경 상자)
+# Custom CSS (알약 모양 Pill 버튼 디자인)
 # ---------------------------------------------------------
 st.markdown("""
     <style>
@@ -109,32 +109,34 @@ st.markdown("""
         margin-bottom: 0px !important;
     }
 
-    /* 날짜 버튼 높이 최소화 */
+    /* ★ 날짜 버튼 스타일 (알약 Pill 모양 적용) */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button {
-        background-color: #FFFFFF !important;
-        border: 1px solid #E2E8F0 !important;
+        background-color: #F8FAFC !important;
+        border: 1px solid #CBD5E1 !important;
         color: #1E293B !important;
         padding: 2px 2px !important;
         min-height: 28px !important;
         font-size: 13px !important;
         font-weight: 700 !important;
-        border-radius: 6px !important;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
-        transition: all 0.15s ease-in-out !important;
+        border-radius: 20px !important; /* 동그란 알약 스타일 */
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+        transition: all 0.2s ease-in-out !important;
         margin-bottom: 0px !important;
     }
 
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button:hover {
-        background-color: #F8FAFC !important;
-        border-color: #94A3B8 !important;
+        background-color: #E2E8F0 !important;
+        border-color: #64748B !important;
+        transform: translateY(-1px) !important;
     }
 
-    /* '오늘' 날짜 하이라이트 */
+    /* '오늘' 날짜 하이라이트 (알약형) */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[kind="primary"] {
-        background: linear-gradient(135deg, #E0F2FE 0%, #BAE6FD 100%) !important;
-        border: 2px solid #0284C7 !important;
-        color: #0369A1 !important;
+        background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%) !important;
+        border: none !important;
+        color: #FFFFFF !important;
         font-weight: 800 !important;
+        border-radius: 20px !important;
     }
 
     /* 일정 텍스트 컨테이너 */
@@ -155,7 +157,7 @@ st.markdown("""
         white-space: normal !important;
         word-break: break-all !important;
         padding: 2px 4px !important;
-        border-radius: 4px !important;
+        border-radius: 6px !important;
         background-color: #F0F9FF !important;
         border-left: 3px solid #38BDF8 !important;
     }
@@ -173,15 +175,15 @@ st.markdown("""
         color: #92400E !important;
     }
 
-    /* 네비게이션 버튼 및 폼 제출 버튼 */
+    /* 네비게이션 버튼 (이전달/다음달 - 알약형) */
     div.stButton > button[key="btn_prev_month"], 
     div.stButton > button[key="btn_next_month"] {
-        background-color: #0F172A !important;
+        background-color: #1E293B !important;
         color: white !important;
         font-weight: 700 !important;
         font-size: 13px !important;
-        border-radius: 8px !important;
-        padding: 5px 10px !important;
+        border-radius: 20px !important;
+        padding: 5px 12px !important;
     }
 
     div[data-testid="stFormSubmitButton"] > button {
@@ -189,14 +191,14 @@ st.markdown("""
         color: white !important;
         font-weight: bold !important;
         font-size: 15px !important;
-        border-radius: 8px !important;
+        border-radius: 20px !important;
     }
 
     /* 하단 KPI 대시보드 카드 스타일 */
     .kpi-card {
         background-color: #FFFFFF !important;
         border: 1px solid #E2E8F0 !important;
-        border-radius: 10px !important;
+        border-radius: 12px !important;
         padding: 10px 12px !important;
         box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
         text-align: center !important;
@@ -227,6 +229,7 @@ st.markdown("""
             font-weight: 700 !important;
             min-height: 25px !important;
             padding: 1px 0px !important;
+            border-radius: 12px !important;
         }
 
         .task-item {
@@ -479,7 +482,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# 에러가 발생한 경우에만 경고창 출력
 if st.session_state.get("cal_status") == "error":
     st.error(f"⚠️ **동기화 오류**: {st.session_state.get('cal_msg')}")
 
@@ -520,7 +522,6 @@ for week in month_calendar:
                 if st.button(btn_label, key=f"btn_day_{day}", type=btn_type, use_container_width=True):
                     open_day_modal(curr_date)
 
-                # 일정 박스 표출
                 if day_total > 0:
                     task_items = []
                     for _, t in day_tasks.iterrows():
