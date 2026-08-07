@@ -12,13 +12,11 @@ st.set_page_config(page_title="월간 일정표", layout="wide", page_icon="📅
 # ---------------------------------------------------------
 # 구글 캘린더 연동 설정
 # ---------------------------------------------------------
-# ★ 본인의 구글 캘린더 이메일 주소를 입력해 주세요.
 CALENDAR_ID = "moonyh68@gmail.com" 
 
 def add_google_calendar_event(date_str, start_time_str, end_time_str, title, memo):
-    """구글 캘린더에 신규 일정을 등록하는 함수 (에러 진단 강화)"""
+    """구글 캘린더에 신규 일정을 등록하는 함수"""
     try:
-        # Streamlit Secrets에서 서비스 계정 정보 로드
         creds_dict = st.secrets["connections"]["gsheets"]
         credentials = service_account.Credentials.from_service_account_info(
             creds_dict,
@@ -245,7 +243,7 @@ def insert_task(task_date, start_time, end_time, title, memo, is_done, is_meetin
     updated_df = pd.concat([df, new_row], ignore_index=True)
     save_all_tasks(updated_df)
     
-    # 구글 캘린더 실시간 연동 등록 및 결과 받기
+    # 구글 캘린더 실시간 연동 등록
     success, err_msg = add_google_calendar_event(task_date, start_time, end_time, title, memo)
     return success, err_msg
 
@@ -374,7 +372,7 @@ def open_day_modal(target_date):
         st.divider()
 
     st.markdown("**➕ 새 일정 추가**")
-    with st.form("add_task_form", clear_on_submit=True):
+    with st.form("add_task_form", clear_on_submit=False):
         col1, col2 = st.columns(2)
         with col1:
             start_t = st.time_input("시작 시간", datetime.time(9, 0))
@@ -405,19 +403,28 @@ def open_day_modal(target_date):
                     meeting_notes
                 )
                 if success:
+                    st.session_state["cal_status"] = "success"
+                    st.session_state["cal_error"] = None
                     st.success("일정이 성공적으로 저장되었으며, 구글 캘린더에 연동되었습니다.")
                 else:
-                    st.warning("구글 시트에는 저장되었으나, 구글 캘린더 연동 중 오류가 발생했습니다.")
-                    st.error(f"⚠️ 구글 캘린더 오류 원인: {err_msg}")
+                    st.session_state["cal_status"] = "error"
+                    st.session_state["cal_error"] = err_msg
+                    st.error(f"⚠️ 구글 캘린더 연동 실패 원인: {err_msg}")
                 st.rerun()
 
 # =================================-------------------------
-# [1단] 최상단 년/월 표시
+# [1단] 최상단 년/월 표시 및 에러 메시지 고정 영역
 # =================================-------------------------
 st.markdown(
     f"<h2 style='text-align: center; font-weight: 800; font-size: 26px; margin: 0 0 12px 0; padding: 0; line-height: 1.3;'><span style='color: #1E3A8A;'>{year}년</span> <span style='color: #2E7D32;'>{month}월</span></h2>",
     unsafe_allow_html=True
 )
+
+# 구글 캘린더 연동 에러가 있을 경우 상단에 사라지지 않고 표시
+if st.session_state.get("cal_status") == "error":
+    st.error(f"⚠️ **구글 캘린더 연동 오류 발생**: {st.session_state.get('cal_error')}")
+elif st.session_state.get("cal_status") == "success":
+    st.success("✅ 최근 등록한 일정이 구글 캘린더에 동기화되었습니다.")
 
 # =================================-------------------------
 # [2단] 월간 달력 영역
