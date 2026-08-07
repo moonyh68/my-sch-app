@@ -8,7 +8,7 @@ from streamlit_gsheets import GSheetsConnection
 st.set_page_config(page_title="월간 일정표", layout="wide", page_icon="📅")
 
 # ---------------------------------------------------------
-# Custom CSS (날짜 버튼 가독성 & 입체감 강화 최적화)
+# Custom CSS (음수 마진 적용으로 날짜-일정 간격 완벽 밀착)
 # ---------------------------------------------------------
 st.markdown("""
     <style>
@@ -29,13 +29,22 @@ st.markdown("""
         margin: 0.8rem 0 !important;
     }
 
-    /* ★ [개선] 날짜 버튼 가독성 및 시각 디자인 강화 */
+    /* Streamlit 컬럼 내부 기본 요소 간격(Gap) 및 마진 최소화 */
+    div[data-testid="stColumn"] div[data-testid="stVerticalBlock"] {
+        gap: 0px !important;
+    }
+
+    div[data-testid="stColumn"] div[data-testid="stElementContainer"] {
+        margin-bottom: 0px !important;
+    }
+
+    /* [PC 환경] 달력 날짜 버튼 */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button {
         background-color: #FFFFFF !important;
         border: 1px solid #CBD5E1 !important;
         color: #1E293B !important;
         padding: 4px 2px !important;
-        min-height: 40px !important;
+        min-height: 38px !important;
         font-size: 14px !important;
         font-weight: 700 !important;
         border-radius: 6px !important;
@@ -44,16 +53,14 @@ st.markdown("""
         margin-bottom: 0px !important;
     }
 
-    /* 날짜 버튼 호버(Hover) 반응성 강화 */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button:hover {
         background-color: #F1F5F9 !important;
         border-color: #64748B !important;
         color: #0F172A !important;
-        transform: translateY(-1px) !important;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
     }
 
-    /* ★ [개선] '오늘' 날짜 버튼 강조 스타일 */
+    /* '오늘' 날짜 버튼 강조 */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[kind="primary"] {
         background-color: #F0F9FF !important;
         border: 2px solid #0284C7 !important;
@@ -61,12 +68,12 @@ st.markdown("""
         font-weight: 800 !important;
     }
 
-    /* 일정 영역 박스/배경 제거 및 정갈한 여백 적용 */
+    /* ★ 음수 마진(-6px)을 이용하여 일정 텍스트를 날짜 버튼 바로 밑으로 밀착 */
     .task-container {
         background-color: transparent !important;
         border: none !important;
         padding: 0px !important;
-        margin-top: 3px !important;
+        margin-top: -6px !important; /* 음수 마진으로 버튼 밑으로 바짝 끌어올림 */
     }
 
     .task-item {
@@ -136,7 +143,7 @@ st.markdown("""
         }
 
         .task-container {
-            margin-top: 1px !important;
+            margin-top: -4px !important; /* 모바일 전용 밀착 마진 */
         }
 
         .task-item {
@@ -413,7 +420,7 @@ for week in month_calendar:
                 if st.button(btn_label, key=f"btn_day_{day}", type=btn_type, use_container_width=True):
                     open_day_modal(curr_date)
 
-                # 날짜 버튼 밑 박스를 제거하고 깔끔하게 나열되는 일정 텍스트
+                # 날짜 버튼 밑 박스를 제거하고 밀착되어 나열되는 일정 텍스트
                 if day_total > 0:
                     task_items = []
                     for _, t in day_tasks.iterrows():
