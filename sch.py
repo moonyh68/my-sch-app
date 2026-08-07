@@ -12,41 +12,70 @@ st.set_page_config(page_title="월간 일정표", layout="wide", page_icon="📅
 # ---------------------------------------------------------
 # 구글 캘린더 연동 설정
 # ---------------------------------------------------------
-CALENDAR_ID = "moonyh68@gmail.com" 
+CALENDAR_ID = "moonyh68@gmail.com"
+
+def get_calendar_service():
+    """구글 캘린더 API 서비스 객체 생성"""
+    creds_dict = st.secrets["connections"]["gsheets"]
+    credentials = service_account.Credentials.from_service_account_info(
+        creds_dict,
+        scopes=['https://www.googleapis.com/auth/calendar']
+    )
+    return build('calendar', 'v3', credentials=credentials)
 
 def add_google_calendar_event(date_str, start_time_str, end_time_str, title, memo):
-    """구글 캘린더에 신규 일정을 등록하는 함수"""
+    """구글 캘린더 신규 일정 등록 (생성된 event_id 반환)"""
     try:
-        creds_dict = st.secrets["connections"]["gsheets"]
-        credentials = service_account.Credentials.from_service_account_info(
-            creds_dict,
-            scopes=['https://www.googleapis.com/auth/calendar']
-        )
-        service = build('calendar', 'v3', credentials=credentials)
-
+        service = get_calendar_service()
         start_datetime = f"{date_str}T{start_time_str}:00"
         end_datetime = f"{date_str}T{end_time_str}:00"
 
         event = {
             'summary': title,
             'description': memo if memo else '',
-            'start': {
-                'dateTime': start_datetime,
-                'timeZone': 'Asia/Seoul',
-            },
-            'end': {
-                'dateTime': end_datetime,
-                'timeZone': 'Asia/Seoul',
-            },
+            'start': {'dateTime': start_datetime, 'timeZone': 'Asia/Seoul'},
+            'end': {'dateTime': end_datetime, 'timeZone': 'Asia/Seoul'},
         }
 
-        service.events().insert(calendarId=CALENDAR_ID, body=event).execute()
+        created_event = service.events().insert(calendarId=CALENDAR_ID, body=event).execute()
+        return True, created_event.get('id'), None
+    except Exception as e:
+        return False, None, str(e)
+
+def update_google_calendar_event(event_id, date_str, start_time_str, end_time_str, title, memo):
+    """구글 캘린더 기존 일정 수정"""
+    if not event_id or pd.isna(event_id) or str(event_id).strip() == "":
+        return True, None
+    try:
+        service = get_calendar_service()
+        start_datetime = f"{date_str}T{start_time_str}:00"
+        end_datetime = f"{date_str}T{end_time_str}:00"
+
+        event = {
+            'summary': title,
+            'description': memo if memo else '',
+            'start': {'dateTime': start_datetime, 'timeZone': 'Asia/Seoul'},
+            'end': {'dateTime': end_datetime, 'timeZone': 'Asia/Seoul'},
+        }
+
+        service.events().update(calendarId=CALENDAR_ID, eventId=str(event_id), body=event).execute()
+        return True, None
+    except Exception as e:
+        return False, str(e)
+
+def delete_google_calendar_event(event_id):
+    """구글 캘린더 일정 삭제"""
+    if not event_id or pd.isna(event_id) or str(event_id).strip() == "":
+        return True, None
+    try:
+        service = get_calendar_service()
+        service.events().delete(calendarId=CALENDAR_ID, eventId=str(event_id)).execute()
         return True, None
     except Exception as e:
         return False, str(e)
 
 # ---------------------------------------------------------
-# Custom CSS (음수 마진 적용 최적화)
+# Custom CSS (음수 마진 및 레이아웃 최적화)
 # ---------------------------------------------------------
 st.markdown("""
     <style>
@@ -197,22 +226,21 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 def fetch_all_tasks():
     try:
         df = conn.read(ttl=0)
+        expected_cols = ['id', 'task_date', 'start_time', 'end_time', 'title', 'memo', 'is_done', 'is_meeting', 'meeting_notes', 'event_id']
+        
         if df.empty or 'id' not in df.columns:
-            df = pd.DataFrame(columns=[
-                'id', 'task_date', 'start_time', 'end_time', 
-                'title', 'memo', 'is_done', 'is_meeting', 'meeting_notes'
-            ])
+            df = pd.DataFrame(columns=expected_cols)
         else:
+            for col in expected_cols:
+                if col not in df.columns:
+                    df[col] = ""
             df['id'] = df['id'].astype(int)
             df['is_done'] = df['is_done'].astype(int)
             df['is_meeting'] = df['is_meeting'].astype(int)
             df['task_date'] = df['task_date'].astype(str)
         return df
     except Exception as e:
-        return pd.DataFrame(columns=[
-            'id', 'task_date', 'start_time', 'end_time', 
-            'title', 'memo', 'is_done', 'is_meeting', 'meeting_notes'
-        ])
+        return pd.DataFrame(columns=['id', 'task_date', 'start_time', 'end_time', 'title', 'memo', 'is_done', 'is_meeting', 'meeting_notes', 'event_id'])
 
 def save_all_tasks(df):
     conn.update(data=df)
@@ -228,6 +256,9 @@ def insert_task(task_date, start_time, end_time, title, memo, is_done, is_meetin
     df = fetch_all_tasks()
     new_id = int(df['id'].max()) + 1 if not df.empty and df['id'].max() > 0 else 1
     
+    # 구글 캘린더 등록
+    cal_success, cal_event_id, cal_err = add_google_calendar_event(task_date, start_time, end_time, title, memo)
+    
     new_row = pd.DataFrame([{
         'id': new_id,
         'task_date': str(task_date),
@@ -237,20 +268,20 @@ def insert_task(task_date, start_time, end_time, title, memo, is_done, is_meetin
         'memo': str(memo),
         'is_done': int(is_done),
         'is_meeting': int(is_meeting),
-        'meeting_notes': str(meeting_notes)
+        'meeting_notes': str(meeting_notes),
+        'event_id': str(cal_event_id) if cal_event_id else ""
     }])
     
     updated_df = pd.concat([df, new_row], ignore_index=True)
     save_all_tasks(updated_df)
-    
-    # 구글 캘린더 실시간 연동 등록
-    success, err_msg = add_google_calendar_event(task_date, start_time, end_time, title, memo)
-    return success, err_msg
+    return cal_success, cal_err
 
-def update_task_full(task_id, start_time, end_time, title, memo, is_meeting, meeting_notes):
+def update_task_full(task_id, task_date, start_time, end_time, title, memo, is_meeting, meeting_notes):
     df = fetch_all_tasks()
     idx = df[df['id'] == int(task_id)].index
     if not idx.empty:
+        event_id = df.loc[idx[0], 'event_id'] if 'event_id' in df.columns else ""
+        
         df.loc[idx, 'start_time'] = str(start_time)
         df.loc[idx, 'end_time'] = str(end_time)
         df.loc[idx, 'title'] = str(title)
@@ -258,6 +289,11 @@ def update_task_full(task_id, start_time, end_time, title, memo, is_meeting, mee
         df.loc[idx, 'is_meeting'] = int(is_meeting)
         df.loc[idx, 'meeting_notes'] = str(meeting_notes)
         save_all_tasks(df)
+        
+        # 구글 캘린더 수정 동기화
+        cal_success, cal_err = update_google_calendar_event(event_id, task_date, start_time, end_time, title, memo)
+        return cal_success, cal_err
+    return True, None
 
 def update_task_done(task_id, is_done):
     df = fetch_all_tasks()
@@ -268,26 +304,16 @@ def update_task_done(task_id, is_done):
 
 def delete_task(task_id):
     df = fetch_all_tasks()
-    updated_df = df[df['id'] != int(task_id)]
-    save_all_tasks(updated_df)
-
-HOLIDAYS = {
-    "2026-01-01": "신정",
-    "2026-02-16": "설연휴",
-    "2026-02-17": "설날",
-    "2026-02-18": "설연휴",
-    "2026-03-01": "삼일절",
-    "2026-05-05": "어린이날",
-    "2026-05-24": "석가탄신일",
-    "2026-06-06": "현충일",
-    "2026-08-15": "광복절",
-    "2026-09-24": "추석연휴",
-    "2026-09-25": "추석",
-    "2026-09-26": "추석연휴",
-    "2026-10-03": "개천절",
-    "2026-10-09": "한글날",
-    "2026-12-25": "성탄절"
-}
+    idx = df[df['id'] == int(task_id)].index
+    if not idx.empty:
+        event_id = df.loc[idx[0], 'event_id'] if 'event_id' in df.columns else ""
+        updated_df = df[df['id'] != int(task_id)]
+        save_all_tasks(updated_df)
+        
+        # 구글 캘린더 삭제 동기화
+        cal_success, cal_err = delete_google_calendar_event(event_id)
+        return cal_success, cal_err
+    return True, None
 
 # ---------------------------------------------------------
 # 2. 세션 상태 초기화
@@ -346,8 +372,9 @@ def open_day_modal(target_date):
                     save_changes = st.form_submit_button("💾 수정사항 저장", use_container_width=True)
 
                     if save_changes:
-                        update_task_full(
+                        success, err_msg = update_task_full(
                             row['id'],
+                            date_str,
                             edit_start.strftime("%H:%M"),
                             edit_end.strftime("%H:%M"),
                             edit_title,
@@ -355,7 +382,12 @@ def open_day_modal(target_date):
                             edit_is_meeting,
                             edit_meeting_notes
                         )
-                        st.success("일정이 수정되었습니다.")
+                        if success:
+                            st.session_state["cal_status"] = "success"
+                            st.session_state["cal_msg"] = "일정 수정 내용이 구글 캘린더에 동기화되었습니다."
+                        else:
+                            st.session_state["cal_status"] = "error"
+                            st.session_state["cal_msg"] = f"구글 캘린더 수정 실패: {err_msg}"
                         st.rerun()
 
                 col_chk, col_del = st.columns([2, 1])
@@ -367,7 +399,13 @@ def open_day_modal(target_date):
                         st.rerun()
                 with col_del:
                     if st.button("🗑️ 삭제", key=f"del_btn_{row['id']}", use_container_width=True):
-                        delete_task(row['id'])
+                        success, err_msg = delete_task(row['id'])
+                        if success:
+                            st.session_state["cal_status"] = "success"
+                            st.session_state["cal_msg"] = "일정이 삭제되었으며 구글 캘린더에서도 제거되었습니다."
+                        else:
+                            st.session_state["cal_status"] = "error"
+                            st.session_state["cal_msg"] = f"구글 캘린더 삭제 실패: {err_msg}"
                         st.rerun()
         st.divider()
 
@@ -404,27 +442,24 @@ def open_day_modal(target_date):
                 )
                 if success:
                     st.session_state["cal_status"] = "success"
-                    st.session_state["cal_error"] = None
-                    st.success("일정이 성공적으로 저장되었으며, 구글 캘린더에 연동되었습니다.")
+                    st.session_state["cal_msg"] = "새 일정이 저장되었으며 구글 캘린더에도 수록되었습니다."
                 else:
                     st.session_state["cal_status"] = "error"
-                    st.session_state["cal_error"] = err_msg
-                    st.error(f"⚠️ 구글 캘린더 연동 실패 원인: {err_msg}")
+                    st.session_state["cal_msg"] = f"구글 캘린더 등록 실패: {err_msg}"
                 st.rerun()
 
 # =================================-------------------------
-# [1단] 최상단 년/월 표시 및 에러 메시지 고정 영역
+# [1단] 최상단 년/월 표시 및 상태 메시지 고정 영역
 # =================================-------------------------
 st.markdown(
     f"<h2 style='text-align: center; font-weight: 800; font-size: 26px; margin: 0 0 12px 0; padding: 0; line-height: 1.3;'><span style='color: #1E3A8A;'>{year}년</span> <span style='color: #2E7D32;'>{month}월</span></h2>",
     unsafe_allow_html=True
 )
 
-# 구글 캘린더 연동 에러가 있을 경우 상단에 사라지지 않고 표시
 if st.session_state.get("cal_status") == "error":
-    st.error(f"⚠️ **구글 캘린더 연동 오류 발생**: {st.session_state.get('cal_error')}")
+    st.error(f"⚠️ **동기화 오류**: {st.session_state.get('cal_msg')}")
 elif st.session_state.get("cal_status") == "success":
-    st.success("✅ 최근 등록한 일정이 구글 캘린더에 동기화되었습니다.")
+    st.success(f"✅ {st.session_state.get('cal_msg')}")
 
 # =================================-------------------------
 # [2단] 월간 달력 영역
