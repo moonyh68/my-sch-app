@@ -80,7 +80,7 @@ def delete_google_calendar_event(event_id):
         return False, str(e)
 
 # ---------------------------------------------------------
-# Custom CSS (일자 날짜 글씨 극대화 및 선명도 향상)
+# Custom CSS (일자 시인성 자연스럽게 완화)
 # ---------------------------------------------------------
 st.markdown("""
     <style>
@@ -122,22 +122,22 @@ st.markdown("""
         border-left: 1px solid #E2E8F0 !important;
     }
 
-    /* ★ [핵심] 일자(1일, 2일 등) 글씨체를 굵고 선명한 흑색으로 강력 변경 */
+    /* ★ [수정] 일자(1일, 2일 등) 글씨체 시인성을 부드럽고 자연스럽게 완화 */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button,
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button p,
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button div {
         background-color: transparent !important;
         border: none !important;
-        color: #0F172A !important;                 /* 매우 진한 흑슬레이트 색상 */
+        color: #475569 !important;                 /* 강한 흑색 대신 부드러운 차콜 그레이 */
         padding: 2px 2px !important;
-        min-height: 26px !important;
-        font-size: 15px !important;                 /* 글자 크기 선명하게 확대 */
-        font-weight: 900 !important;                 /* 최상위 굵기(Bold 900) */
+        min-height: 25px !important;
+        font-size: 13.5px !important;               /* 과도한 확대 완화 (13.5px) */
+        font-weight: 700 !important;                 /* 900에서 편안한 700 레벨로 조절 */
         border-radius: 20px !important;
         box-shadow: none !important;
         transition: all 0.15s ease-in-out !important;
         margin-bottom: 2px !important;
-        letter-spacing: -0.5px !important;
+        letter-spacing: normal !important;
         -webkit-font-smoothing: antialiased !important;
     }
 
@@ -147,13 +147,13 @@ st.markdown("""
         color: #0284C7 !important;
     }
 
-    /* '오늘' 날짜 원형 하이라이트 (텍스트 하얗고 진하게 유지) */
+    /* '오늘' 날짜 원형 하이라이트 */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[kind="primary"],
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[kind="primary"] p {
         background-color: #0284C7 !important;
         border: none !important;
         color: #FFFFFF !important;
-        font-weight: 900 !important;
+        font-weight: 800 !important;
         border-radius: 20px !important;
     }
 
@@ -168,7 +168,7 @@ st.markdown("""
     /* 연한 파스텔톤 일정 배경 카드 */
     .task-item {
         font-size: 11px !important;
-        font-weight: 500 !important;
+        font-weight: 400 !important;
         color: #0F172A !important;
         line-height: 1.3 !important;
         margin-bottom: 2px !important;
@@ -253,7 +253,7 @@ st.markdown("""
         div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button,
         div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button p {
             font-size: 11px !important;
-            font-weight: 900 !important;
+            font-weight: 700 !important;
             min-height: 24px !important;
             padding: 1px 0px !important;
         }
