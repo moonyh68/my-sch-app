@@ -58,8 +58,8 @@ def update_google_calendar_event(event_id, date_str, start_time_str, end_time_st
 
         if event_id and not pd.isna(event_id) and str(event_id).strip() != "":
             try:
-                service.events().update(calendarId=CALENDAR_ID, eventId=str(event_id), body=event).execute()
-                return True, str(event_id), None
+                service.events().update(calendarId=CALENDAR_ID, eventId=str(event_id).strip(), body=event).execute()
+                return True, str(event_id).strip(), None
             except Exception:
                 pass
 
@@ -74,13 +74,13 @@ def delete_google_calendar_event(event_id):
         return True, None
     try:
         service = get_calendar_service()
-        service.events().delete(calendarId=CALENDAR_ID, eventId=str(event_id)).execute()
+        service.events().delete(calendarId=CALENDAR_ID, eventId=str(event_id).strip()).execute()
         return True, None
     except Exception as e:
         return False, str(e)
 
 # ---------------------------------------------------------
-# Custom CSS (일자 시인성 자연스럽게 완화)
+# Custom CSS
 # ---------------------------------------------------------
 st.markdown("""
     <style>
@@ -122,17 +122,17 @@ st.markdown("""
         border-left: 1px solid #E2E8F0 !important;
     }
 
-    /* ★ [수정] 일자(1일, 2일 등) 글씨체 시인성을 부드럽고 자연스럽게 완화 */
+    /* 일자 글씨체 */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button,
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button p,
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button div {
         background-color: transparent !important;
         border: none !important;
-        color: #475569 !important;                 /* 강한 흑색 대신 부드러운 차콜 그레이 */
+        color: #475569 !important;
         padding: 2px 2px !important;
         min-height: 25px !important;
-        font-size: 13.5px !important;               /* 과도한 확대 완화 (13.5px) */
-        font-weight: 700 !important;                 /* 900에서 편안한 700 레벨로 조절 */
+        font-size: 13.5px !important;
+        font-weight: 700 !important;
         border-radius: 20px !important;
         box-shadow: none !important;
         transition: all 0.15s ease-in-out !important;
@@ -269,35 +269,46 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 1. 구글 시트 데이터베이스 연동 함수
+# 1. 구글 시트 데이터베이스 연동 함수 (안전성 강화)
 # ---------------------------------------------------------
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 def fetch_all_tasks():
+    """Google Sheets 전체 데이터 안전 읽기"""
     try:
         df = conn.read(ttl=0)
         expected_cols = ['id', 'task_date', 'start_time', 'end_time', 'title', 'memo', 'is_done', 'is_meeting', 'meeting_notes', 'event_id']
         
-        if df.empty or 'id' not in df.columns:
-            df = pd.DataFrame(columns=expected_cols)
-        else:
-            for col in expected_cols:
-                if col not in df.columns:
-                    df[col] = ""
-            df = df.astype(object)
-            df['id'] = pd.to_numeric(df['id'], errors='coerce').fillna(0).astype(int)
-            df['is_done'] = pd.to_numeric(df['is_done'], errors='coerce').fillna(0).astype(int)
-            df['is_meeting'] = pd.to_numeric(df['is_meeting'], errors='coerce').fillna(0).astype(int)
+        if df.empty:
+            return pd.DataFrame(columns=expected_cols)
             
-            str_cols = ['task_date', 'start_time', 'end_time', 'title', 'memo', 'meeting_notes', 'event_id']
-            for col in str_cols:
-                df[col] = df[col].fillna("").astype(str)
-        return df
+        for col in expected_cols:
+            if col not in df.columns:
+                df[col] = ""
+                
+        df = df.astype(object)
+        
+        # ID를 문자열 정규화 후 정수 변환 (빈값 처리)
+        df['id_clean'] = pd.to_numeric(df['id'], errors='coerce').fillna(-1).astype(int)
+        df = df[df['id_clean'] != -1].copy() # 정상적인 ID가 있는 행만 유지
+        df['id'] = df['id_clean']
+        df = df.drop(columns=['id_clean'])
+        
+        df['is_done'] = pd.to_numeric(df['is_done'], errors='coerce').fillna(0).astype(int)
+        df['is_meeting'] = pd.to_numeric(df['is_meeting'], errors='coerce').fillna(0).astype(int)
+        
+        str_cols = ['task_date', 'start_time', 'end_time', 'title', 'memo', 'meeting_notes', 'event_id']
+        for col in str_cols:
+            df[col] = df[col].fillna("").astype(str)
+            
+        return df.reset_index(drop=True)
     except Exception as e:
         return pd.DataFrame(columns=['id', 'task_date', 'start_time', 'end_time', 'title', 'memo', 'is_done', 'is_meeting', 'meeting_notes', 'event_id'])
 
 def save_all_tasks(df):
-    conn.update(data=df)
+    """인덱스 재정렬 후 안전하게 Google Sheets 업데이트"""
+    clean_df = df.reset_index(drop=True)
+    conn.update(data=clean_df)
 
 def fetch_month_tasks(year, month):
     df = fetch_all_tasks()
@@ -307,13 +318,18 @@ def fetch_month_tasks(year, month):
     return df[df['task_date'].str.startswith(prefix)]
 
 def insert_task(task_date, start_time, end_time, title, memo, is_done, is_meeting, meeting_notes):
+    """신규 일정 저장"""
     df = fetch_all_tasks()
-    new_id = int(df['id'].max()) + 1 if not df.empty and df['id'].max() > 0 else 1
+    
+    if not df.empty and len(df['id']) > 0:
+        new_id = int(df['id'].max()) + 1
+    else:
+        new_id = 1
     
     cal_success, cal_event_id, cal_err = add_google_calendar_event(task_date, start_time, end_time, title, memo)
     
     new_row = pd.DataFrame([{
-        'id': new_id,
+        'id': int(new_id),
         'task_date': str(task_date),
         'start_time': str(start_time),
         'end_time': str(end_time),
@@ -329,11 +345,19 @@ def insert_task(task_date, start_time, end_time, title, memo, is_done, is_meetin
     save_all_tasks(updated_df)
     return cal_success, cal_err
 
-def update_task_full(task_id, task_date, start_time, end_time, title, memo, is_meeting, meeting_notes):
+def update_task_full(target_id, task_date, start_time, end_time, title, memo, is_meeting, meeting_notes):
+    """[검증 완료] 단일 일정 수정 로직 - ID 문자열 정규화 비교"""
     df = fetch_all_tasks()
-    idx = df[df['id'] == int(task_id)].index
-    if not idx.empty:
-        old_event_id = str(df.loc[idx[0], 'event_id']) if 'event_id' in df.columns else ""
+    if df.empty:
+        return True, None
+
+    target_id_str = str(int(target_id))
+    df['id_str'] = df['id'].astype(str).str.strip()
+    
+    mask = (df['id_str'] == target_id_str)
+    if mask.any():
+        idx = df[mask].index[0]
+        old_event_id = str(df.loc[idx, 'event_id']) if 'event_id' in df.columns else ""
         
         cal_success, new_event_id, cal_err = update_google_calendar_event(old_event_id, task_date, start_time, end_time, title, memo)
         
@@ -347,27 +371,54 @@ def update_task_full(task_id, task_date, start_time, end_time, title, memo, is_m
         if new_event_id:
             df.loc[idx, 'event_id'] = str(new_event_id)
             
+        df = df.drop(columns=['id_str'])
         save_all_tasks(df)
         return cal_success, cal_err
+        
     return True, None
 
-def update_task_done(task_id, is_done):
+def update_task_done(target_id, is_done):
+    """완료 상태 단일 업데이트"""
     df = fetch_all_tasks()
-    idx = df[df['id'] == int(task_id)].index
-    if not idx.empty:
+    if df.empty:
+        return
+
+    target_id_str = str(int(target_id))
+    df['id_str'] = df['id'].astype(str).str.strip()
+    mask = (df['id_str'] == target_id_str)
+    
+    if mask.any():
+        idx = df[mask].index[0]
         df.loc[idx, 'is_done'] = int(is_done)
+        df = df.drop(columns=['id_str'])
         save_all_tasks(df)
 
-def delete_task(task_id):
+def delete_task(target_id):
+    """★ [완벽 검증] 지정한 단 1개의 ID만 안전 삭제"""
     df = fetch_all_tasks()
-    idx = df[df['id'] == int(task_id)].index
-    if not idx.empty:
-        event_id = str(df.loc[idx[0], 'event_id']) if 'event_id' in df.columns else ""
-        updated_df = df[df['id'] != int(task_id)]
+    if df.empty:
+        return True, None
+
+    target_id_str = str(int(target_id))
+    df['id_str'] = df['id'].astype(str).str.strip()
+    
+    # 해당 ID 행 탐색
+    matched = df[df['id_str'] == target_id_str]
+    if not matched.empty:
+        idx = matched.index[0]
+        event_id = str(df.loc[idx, 'event_id']) if 'event_id' in df.columns else ""
+        
+        # 지정된 target_id_str 이 아닌 항목들만 남기기 (오직 대상 1개만 제외)
+        updated_df = df[df['id_str'] != target_id_str].copy()
+        updated_df = updated_df.drop(columns=['id_str'])
+        
+        # 인덱스 깨짐 방지 및 구글 시트 저장
         save_all_tasks(updated_df)
         
+        # 구글 캘린더 해당 단일 일정 삭제
         cal_success, cal_err = delete_google_calendar_event(event_id)
         return cal_success, cal_err
+        
     return True, None
 
 # ---------------------------------------------------------
@@ -383,7 +434,7 @@ year = st.session_state.current_year
 month = st.session_state.current_month
 
 # ---------------------------------------------------------
-# 3. 팝업 모달 다이얼로그
+# 3. 팝업 모달 다이얼로그 (Form Key 충돌 및 ID 혼선 방지)
 # ---------------------------------------------------------
 @st.dialog("📅 일자별 상세 일정 및 회의록", width="large")
 def open_day_modal(target_date):
@@ -395,65 +446,70 @@ def open_day_modal(target_date):
 
     if not tasks_df.empty:
         st.markdown("**📋 등록된 일정 및 수정**")
-        for idx, row in tasks_df.iterrows():
+        for _, row in tasks_df.iterrows():
+            row_id = int(row['id'])
             status_text = "✅ 완료" if row['is_done'] else "⏳ 진행중"
+            
             with st.expander(f"[{status_text}] {row['start_time']}~{row['end_time']} | {row['title']}", expanded=False):
-                with st.form(key=f"edit_form_{row['id']}"):
-                    st.markdown("**수정 항목 입력**")
-                    
-                    try:
-                        st_time_val = datetime.datetime.strptime(str(row['start_time']), "%H:%M").time()
-                    except:
-                        st_time_val = datetime.time(9, 0)
-                    try:
-                        et_time_val = datetime.datetime.strptime(str(row['end_time']), "%H:%M").time()
-                    except:
-                        et_time_val = datetime.time(10, 0)
+                st.markdown("**수정 항목 입력**")
+                
+                try:
+                    st_time_val = datetime.datetime.strptime(str(row['start_time']), "%H:%M").time()
+                except:
+                    st_time_val = datetime.time(9, 0)
+                try:
+                    et_time_val = datetime.datetime.strptime(str(row['end_time']), "%H:%M").time()
+                except:
+                    et_time_val = datetime.time(10, 0)
 
-                    col_e1, col_e2 = st.columns(2)
-                    with col_e1:
-                        edit_start = st.time_input("시작 시간", value=st_time_val, key=f"e_start_{row['id']}")
-                    with col_e2:
-                        edit_end = st.time_input("종료 시간", value=et_time_val, key=f"e_end_{row['id']}")
+                col_e1, col_e2 = st.columns(2)
+                with col_e1:
+                    edit_start = st.time_input("시작 시간", value=st_time_val, key=f"e_start_{row_id}")
+                with col_e2:
+                    edit_end = st.time_input("종료 시간", value=et_time_val, key=f"e_end_{row_id}")
 
-                    edit_title = st.text_input("업무명 / 안건", value=row['title'], key=f"e_title_{row['id']}")
-                    edit_memo = st.text_input("메모", value=row['memo'] if pd.notna(row['memo']) else "", key=f"e_memo_{row['id']}")
-                    edit_is_meeting = st.checkbox("회의 여부", value=bool(row['is_meeting']), key=f"e_chk_mt_{row['id']}")
+                edit_title = st.text_input("업무명 / 안건", value=row['title'], key=f"e_title_{row_id}")
+                edit_memo = st.text_input("메모", value=row['memo'] if pd.notna(row['memo']) else "", key=f"e_memo_{row_id}")
+                edit_is_meeting = st.checkbox("회의 여부", value=bool(row['is_meeting']), key=f"e_chk_mt_{row_id}")
 
-                    edit_meeting_notes = ""
-                    if edit_is_meeting:
-                        edit_meeting_notes = st.text_area("회의 내용 및 결정 사항", value=row['meeting_notes'] if pd.notna(row['meeting_notes']) else "", key=f"e_notes_{row['id']}")
+                edit_meeting_notes = ""
+                if edit_is_meeting:
+                    edit_meeting_notes = st.text_area("회의 내용 및 결정 사항", value=row['meeting_notes'] if pd.notna(row['meeting_notes']) else "", key=f"e_notes_{row_id}")
 
-                    save_changes = st.form_submit_button("💾 수정사항 저장", use_container_width=True)
-
-                    if save_changes:
-                        success, err_msg = update_task_full(
-                            row['id'],
-                            date_str,
-                            edit_start.strftime("%H:%M"),
-                            edit_end.strftime("%H:%M"),
-                            edit_title,
-                            edit_memo,
-                            edit_is_meeting,
-                            edit_meeting_notes
-                        )
-                        if not success:
-                            st.session_state["cal_status"] = "error"
-                            st.session_state["cal_msg"] = f"구글 캘린더 수정 실패: {err_msg}"
+                col_btn1, col_btn2, col_btn3 = st.columns([1.5, 1.5, 1])
+                
+                with col_btn1:
+                    if st.button("💾 수정 저장", key=f"save_btn_{row_id}", use_container_width=True):
+                        if not edit_title:
+                            st.error("업무명을 입력해 주세요.")
                         else:
-                            st.session_state["cal_status"] = None
+                            success, err_msg = update_task_full(
+                                row_id,
+                                date_str,
+                                edit_start.strftime("%H:%M"),
+                                edit_end.strftime("%H:%M"),
+                                edit_title,
+                                edit_memo,
+                                edit_is_meeting,
+                                edit_meeting_notes
+                            )
+                            if not success:
+                                st.session_state["cal_status"] = "error"
+                                st.session_state["cal_msg"] = f"구글 캘린더 수정 실패: {err_msg}"
+                            else:
+                                st.session_state["cal_status"] = None
+                            st.rerun()
+
+                with col_btn2:
+                    chk_label = "✅ 완료" if row['is_done'] else "🟢 완료 처리"
+                    if st.button(f"{chk_label}", key=f"chk_btn_{row_id}", use_container_width=True):
+                        new_done = 0 if row['is_done'] else 1
+                        update_task_done(row_id, new_done)
                         st.rerun()
 
-                col_chk, col_del = st.columns([2, 1])
-                with col_chk:
-                    chk_label = "✅ 완료 상태" if row['is_done'] else "🟢 완료 처리하기"
-                    done_chk = st.checkbox(f"**{chk_label}**", value=bool(row['is_done']), key=f"chk_done_{row['id']}")
-                    if done_chk != bool(row['is_done']):
-                        update_task_done(row['id'], done_chk)
-                        st.rerun()
-                with col_del:
-                    if st.button("🗑️ 삭제", key=f"del_btn_{row['id']}", use_container_width=True):
-                        success, err_msg = delete_task(row['id'])
+                with col_btn3:
+                    if st.button("🗑️ 삭제", key=f"del_btn_{row_id}", use_container_width=True):
+                        success, err_msg = delete_task(row_id)
                         if not success:
                             st.session_state["cal_status"] = "error"
                             st.session_state["cal_msg"] = f"구글 캘린더 삭제 실패: {err_msg}"
