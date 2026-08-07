@@ -8,19 +8,23 @@ from streamlit_gsheets import GSheetsConnection
 st.set_page_config(page_title="월간 일정표", layout="wide", page_icon="📅")
 
 # ---------------------------------------------------------
-# Custom CSS (줄간격 제거, 헤더 글자 복구, 검색창 1줄 고정)
+# Custom CSS (상단 가림 방지, 일정 줄간격 최소화, 모바일 고정)
 # ---------------------------------------------------------
 st.markdown("""
     <style>
-    /* 전체 여백 조정 */
+    /* 상단 헤더 바가 제목을 가리지 않도록 여백 확보 */
     .block-container {
-        padding-top: 1rem !important;
+        padding-top: 3rem !important;
         padding-bottom: 1rem !important;
         padding-left: 0.5rem !important;
         padding-right: 0.5rem !important;
         max-width: 100% !important;
     }
     
+    header[data-testid="stHeader"] {
+        background: transparent !important;
+    }
+
     hr {
         margin: 0.8rem 0 !important;
     }
@@ -50,28 +54,21 @@ st.markdown("""
         color: #0369A1 !important;
     }
 
-    /* ★ [공통] 일정과 일정 사이 줄간격 완전 제거 */
-    div[data-testid="stColumn"] div[data-testid="stCaptionContainer"] {
-        margin-top: 0px !important;
-        margin-bottom: 0px !important;
-        padding-top: 0px !important;
-        padding-bottom: 0px !important;
-        line-height: 1.15 !important;
-    }
-
-    div[data-testid="stColumn"] div[data-testid="stCaptionContainer"] p {
-        font-size: 13.5px !important;
-        color: #0F172A !important;
+    /* ★ 일정 항목 줄간격 최소화 결합 스타일 */
+    .task-box {
+        font-size: 12.5px !important;
         font-weight: 700 !important;
-        margin: 0px !important;
-        padding: 0px !important;
+        color: #0F172A !important;
         line-height: 1.15 !important;
+        margin-top: 2px !important;
+        margin-bottom: 0px !important;
+        padding: 0px !important;
         white-space: nowrap !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
     }
 
-    /* 네비게이션 및 버튼 */
+    /* 네비게이션 및 제출 버튼 */
     div.stButton > button[key="btn_prev_month"], 
     div.stButton > button[key="btn_next_month"] {
         background-color: #1E3A8A !important;
@@ -90,7 +87,7 @@ st.markdown("""
         border-radius: 6px !important;
     }
 
-    /* ★ [공통] 일정/회의록 검색 버튼 1줄 고정 */
+    /* 검색 버튼 한 줄 고정 */
     div[data-testid="stExpander"] summary p {
         font-size: 13px !important;
         white-space: nowrap !important;
@@ -99,7 +96,11 @@ st.markdown("""
 
     /* 📱 [모바일 환경 전용 CSS] */
     @media (max-width: 768px) {
-        /* 모바일 7열 가로 완전 고정 */
+        .block-container {
+            padding-top: 2.5rem !important;
+        }
+
+        /* 모바일 7열 가로 고정 */
         div[data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
@@ -122,14 +123,14 @@ st.markdown("""
             letter-spacing: -0.5px !important;
         }
 
-        /* 모바일 일정 글씨 및 줄간격 최적화 */
-        div[data-testid="stColumn"] div[data-testid="stCaptionContainer"] p {
-            font-size: 11.5px !important;
-            font-weight: 800 !important;
+        /* 모바일 일정 줄간격 및 글자 설정 */
+        .task-box {
+            font-size: 11px !important;
+            line-height: 1.1 !important;
             letter-spacing: -0.5px !important;
         }
 
-        /* 모바일 검색창 텍스트 크기 조정 */
+        /* 모바일 검색창 텍스트 */
         div[data-testid="stExpander"] summary p {
             font-size: 11.5px !important;
         }
@@ -273,23 +274,16 @@ def open_day_modal(target_date):
                     except:
                         et_time_val = datetime.time(10, 0)
 
-                    # [커서 이동 순서 1 & 2]: 시작시간 ➔ 종료시간
                     col_e1, col_e2 = st.columns(2)
                     with col_e1:
                         edit_start = st.time_input("시작 시간", value=st_time_val, key=f"e_start_{row['id']}")
                     with col_e2:
                         edit_end = st.time_input("종료 시간", value=et_time_val, key=f"e_end_{row['id']}")
 
-                    # [커서 이동 순서 3]: 업무명 / 안건
                     edit_title = st.text_input("업무명 / 안건", value=row['title'], key=f"e_title_{row['id']}")
-
-                    # [커서 이동 순서 4]: 메모
                     edit_memo = st.text_input("메모", value=row['memo'] if pd.notna(row['memo']) else "", key=f"e_memo_{row['id']}")
-
-                    # [커서 이동 순서 5]: 회의 여부
                     edit_is_meeting = st.checkbox("회의 여부", value=bool(row['is_meeting']), key=f"e_chk_mt_{row['id']}")
 
-                    # [커서 이동 순서 6]: 회의 내용 및 결정 사항
                     edit_meeting_notes = ""
                     if edit_is_meeting:
                         edit_meeting_notes = st.text_area("회의 내용 및 결정 사항", value=row['meeting_notes'] if pd.notna(row['meeting_notes']) else "", key=f"e_notes_{row['id']}")
@@ -357,10 +351,10 @@ def open_day_modal(target_date):
                 st.rerun()
 
 # =================================-------------------------
-# [1단] 최상단 년/월 표시 (① 요구사항: 표준 H2 태그로 짤림 없이 선명하게 표시)
+# [1단] 최상단 년/월 표시 (① 여백 확보로 짤림 현상 완전 해결)
 # =================================-------------------------
 st.markdown(
-    f"<h2 style='text-align: center; font-weight: 800; font-size: 26px; margin: 0 0 12px 0; padding: 0; line-height: 1.4;'><span style='color: #1E3A8A;'>{year}년</span> <span style='color: #2E7D32;'>{month}월</span></h2>",
+    f"<h2 style='text-align: center; font-weight: 800; font-size: 26px; margin: 0 0 12px 0; padding: 0; line-height: 1.3;'><span style='color: #1E3A8A;'>{year}년</span> <span style='color: #2E7D32;'>{month}월</span></h2>",
     unsafe_allow_html=True
 )
 
@@ -404,18 +398,21 @@ for week in month_calendar:
                 if st.button(btn_label, key=f"btn_day_{day}", type=btn_type, use_container_width=True):
                     open_day_modal(curr_date)
 
-                # 하단 일정 목록 (② 요구사항: 일정 간 줄간격 제로 적용)
+                # ② 요구사항: 단일 HTML 블록으로 묶어 일정 간 줄간격 최소화
                 if day_total > 0:
+                    task_lines = []
                     for _, t in day_tasks.iterrows():
                         icon = "✅" if t['is_done'] else "📌"
-                        st.caption(f"{icon} {t['start_time']} {str(t['title'])[:6]}")
+                        task_lines.append(f"{icon} {t['start_time']} {str(t['title'])[:6]}")
+                    tasks_html = "<br>".join(task_lines)
+                    st.markdown(f"<div class='task-box'>{tasks_html}</div>", unsafe_allow_html=True)
 
 st.divider()
 
 # =================================-------------------------
-# [3단] 이전달 / 일정/회의록 검색 / 다음달 (③ 요구사항: 검색창 1줄 고정)
+# [3단] 이전달 / 일정 검색 / 다음달 (③ 요구사항: 문구 축소로 1줄 고정)
 # =================================-------------------------
-col_nav1, col_nav2, col_nav3 = st.columns([1, 3, 1])
+col_nav1, col_nav2, col_nav3 = st.columns([1, 2.5, 1])
 
 with col_nav1:
     if st.button("◀ 이전달", key="btn_prev_month", use_container_width=True):
@@ -427,7 +424,7 @@ with col_nav1:
         st.rerun()
 
 with col_nav2:
-    with st.expander("🔍 **일정/회의록 검색**", expanded=False):
+    with st.expander("🔍 **일정 검색**", expanded=False):
         search_query = st.text_input("검색어 입력", placeholder="업무명/회의록 키워드", label_visibility="collapsed")
         if search_query:
             all_data = fetch_all_tasks()
