@@ -8,7 +8,7 @@ from streamlit_gsheets import GSheetsConnection
 st.set_page_config(page_title="월간 일정표", layout="wide", page_icon="📅")
 
 # ---------------------------------------------------------
-# Custom CSS (상단 가림 방지, 일정 줄간격 최소화, 모바일 고정)
+# Custom CSS (상단 가림 방지, 일자-일정 간격 완전 밀착, 모바일 고정)
 # ---------------------------------------------------------
 st.markdown("""
     <style>
@@ -29,6 +29,15 @@ st.markdown("""
         margin: 0.8rem 0 !important;
     }
 
+    /* ★ 날짜 버튼과 하단 일정 텍스트 사이 수직 여백(gap) 완전 제거 */
+    div[data-testid="stColumn"] div[data-testid="stVerticalBlock"] {
+        gap: 0px !important;
+    }
+
+    div[data-testid="stColumn"] div.stButton {
+        margin-bottom: 0px !important;
+    }
+
     /* [PC 환경] 달력 날짜 버튼 */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button {
         background-color: #F8FAFC !important;
@@ -40,7 +49,7 @@ st.markdown("""
         font-weight: 700 !important;
         border-radius: 5px !important;
         box-shadow: none !important;
-        margin-bottom: 3px !important;
+        margin-bottom: 0px !important;
     }
 
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button:hover {
@@ -54,7 +63,7 @@ st.markdown("""
         color: #0369A1 !important;
     }
 
-    /* ★ 일정 항목 줄간격 최소화 결합 스타일 */
+    /* ★ 일정 박스 상단 여백 최소화 */
     .task-box {
         font-size: 12.5px !important;
         font-weight: 700 !important;
@@ -128,6 +137,7 @@ st.markdown("""
             font-size: 11px !important;
             line-height: 1.1 !important;
             letter-spacing: -0.5px !important;
+            margin-top: 1px !important;
         }
 
         /* 모바일 검색창 텍스트 */
@@ -351,7 +361,7 @@ def open_day_modal(target_date):
                 st.rerun()
 
 # =================================-------------------------
-# [1단] 최상단 년/월 표시 (① 여백 확보로 짤림 현상 완전 해결)
+# [1단] 최상단 년/월 표시
 # =================================-------------------------
 st.markdown(
     f"<h2 style='text-align: center; font-weight: 800; font-size: 26px; margin: 0 0 12px 0; padding: 0; line-height: 1.3;'><span style='color: #1E3A8A;'>{year}년</span> <span style='color: #2E7D32;'>{month}월</span></h2>",
@@ -398,7 +408,7 @@ for week in month_calendar:
                 if st.button(btn_label, key=f"btn_day_{day}", type=btn_type, use_container_width=True):
                     open_day_modal(curr_date)
 
-                # ② 요구사항: 단일 HTML 블록으로 묶어 일정 간 줄간격 최소화
+                # 날짜 버튼 바로 밑에 일정 표시 (간격 완전 밀착)
                 if day_total > 0:
                     task_lines = []
                     for _, t in day_tasks.iterrows():
@@ -410,7 +420,7 @@ for week in month_calendar:
 st.divider()
 
 # =================================-------------------------
-# [3단] 이전달 / 일정 검색 / 다음달 (③ 요구사항: 문구 축소로 1줄 고정)
+# [3단] 이전달 / 일정 검색 / 다음달
 # =================================-------------------------
 col_nav1, col_nav2, col_nav3 = st.columns([1, 2.5, 1])
 
