@@ -80,7 +80,7 @@ def delete_google_calendar_event(event_id):
         return False, str(e)
 
 # ---------------------------------------------------------
-# Custom CSS (전체 노출 및 글씨체 굵기 조정)
+# Custom CSS (바탕색 제거 깔끔 디자인)
 # ---------------------------------------------------------
 st.markdown("""
     <style>
@@ -146,29 +146,27 @@ st.markdown("""
         margin-top: -0.1px !important;
     }
 
-    /* ★ 일정 텍스트 전체 노출 & 굵지 않은 글씨 스타일 */
+    /* ★ 일정 텍스트 (바탕색 제거) */
     .task-item {
         font-size: 11.5px !important;
-        font-weight: 400 !important;  /* 일반 굵기 */
-        color: #334155 !important;
+        font-weight: 400 !important;
+        color: #1E293B !important;
         line-height: 1.35 !important;
-        margin-bottom: 2px !important;
-        white-space: normal !important; /* 잘림 없이 줄바꿈하여 전체 표시 */
+        margin-bottom: 3px !important;
+        white-space: normal !important;
         word-break: break-all !important;
-        padding: 2px 4px !important;
-        border-radius: 4px !important;
-        background-color: #F1F5F9 !important;
+        padding: 1px 2px !important;
+        background-color: transparent !important; /* 바탕색 제거 */
     }
 
     .task-item-done {
-        background-color: #DCFCE7 !important;
         color: #166534 !important;
         text-decoration: line-through !important;
     }
 
     .task-item-meeting {
-        background-color: #FEF3C7 !important;
-        color: #92400E !important;
+        color: #D97706 !important;
+        font-weight: 500 !important;
     }
 
     /* 네비게이션 버튼 및 폼 제출 버튼 */
@@ -237,8 +235,8 @@ st.markdown("""
             font-weight: 400 !important;
             line-height: 1.25 !important;
             letter-spacing: -0.5px !important;
-            margin-bottom: 1px !important;
-            padding: 1px 2px !important;
+            margin-bottom: 2px !important;
+            padding: 0px 1px !important;
         }
     }
     </style>
@@ -529,7 +527,7 @@ for week in month_calendar:
                 if st.button(btn_label, key=f"btn_day_{day}", type=btn_type, use_container_width=True):
                     open_day_modal(curr_date)
 
-                # 일정 전체 노출 카드 (생략 없음)
+                # 바탕색 없는 깔끔한 일정 텍스트
                 if day_total > 0:
                     task_items = []
                     for _, t in day_tasks.iterrows():
