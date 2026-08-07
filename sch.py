@@ -8,7 +8,7 @@ from streamlit_gsheets import GSheetsConnection
 st.set_page_config(page_title="월간 일정표", layout="wide", page_icon="📅")
 
 # ---------------------------------------------------------
-# Custom CSS (일정 박스 제거 & 여백 최적화)
+# Custom CSS (날짜 버튼 가독성 & 입체감 강화 최적화)
 # ---------------------------------------------------------
 st.markdown("""
     <style>
@@ -29,37 +29,44 @@ st.markdown("""
         margin: 0.8rem 0 !important;
     }
 
-    /* [PC 환경] 달력 날짜 버튼 */
+    /* ★ [개선] 날짜 버튼 가독성 및 시각 디자인 강화 */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button {
-        background-color: #F8FAFC !important;
+        background-color: #FFFFFF !important;
         border: 1px solid #CBD5E1 !important;
-        color: #0F172A !important;
+        color: #1E293B !important;
         padding: 4px 2px !important;
-        min-height: 38px !important;
-        font-size: 13.5px !important;
+        min-height: 40px !important;
+        font-size: 14px !important;
         font-weight: 700 !important;
-        border-radius: 5px !important;
-        box-shadow: none !important;
+        border-radius: 6px !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+        transition: all 0.15s ease-in-out !important;
         margin-bottom: 0px !important;
     }
 
+    /* 날짜 버튼 호버(Hover) 반응성 강화 */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button:hover {
         background-color: #F1F5F9 !important;
-        border-color: #94A3B8 !important;
+        border-color: #64748B !important;
+        color: #0F172A !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
     }
 
+    /* ★ [개선] '오늘' 날짜 버튼 강조 스타일 */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[kind="primary"] {
-        background-color: #E0F2FE !important;
+        background-color: #F0F9FF !important;
         border: 2px solid #0284C7 !important;
         color: #0369A1 !important;
+        font-weight: 800 !important;
     }
 
-    /* ★ 일정 영역 박스/배경 제거 및 정갈한 여백 적용 */
+    /* 일정 영역 박스/배경 제거 및 정갈한 여백 적용 */
     .task-container {
         background-color: transparent !important;
         border: none !important;
         padding: 0px !important;
-        margin-top: 2px !important;
+        margin-top: 3px !important;
     }
 
     .task-item {
@@ -121,14 +128,13 @@ st.markdown("""
         }
 
         div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button {
-            font-size: 11px !important;
+            font-size: 11.5px !important;
             font-weight: 700 !important;
-            min-height: 34px !important;
+            min-height: 35px !important;
             padding: 1px 0px !important;
             letter-spacing: -0.5px !important;
         }
 
-        /* 모바일 일정 글씨 설정 */
         .task-container {
             margin-top: 1px !important;
         }
@@ -140,7 +146,6 @@ st.markdown("""
             margin-bottom: 1px !important;
         }
 
-        /* 모바일 검색창 텍스트 */
         div[data-testid="stExpander"] summary p {
             font-size: 11.5px !important;
         }
