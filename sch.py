@@ -8,29 +8,39 @@ from streamlit_gsheets import GSheetsConnection
 st.set_page_config(page_title="월간 업무 일정표", layout="wide", page_icon="📅")
 
 # ---------------------------------------------------------
-# Custom CSS (모바일 가로 7열 강제 정렬 및 화면 최적화)
+# Custom CSS (모바일 글자 짤림 방지 & 완벽 가로 정렬)
 # ---------------------------------------------------------
 st.markdown("""
     <style>
     /* 전체 여백 최적화 */
     .block-container {
-        padding-top: 1rem !important;
-        padding-bottom: 1rem !important;
-        padding-left: 0.5rem !important;
-        padding-right: 0.5rem !important;
+        padding-top: 0.8rem !important;
+        padding-bottom: 0.8rem !important;
+        padding-left: 0.2rem !important;
+        padding-right: 0.2rem !important;
         max-width: 100% !important;
     }
     
     hr {
-        margin: 0.6rem 0 !important;
+        margin: 0.5rem 0 !important;
     }
 
-    /* ★ 모바일 환경에서 컬럼이 세로로 깨지지 않고 가로 7열 유지하도록 강제 설정 */
+    /* 제목 짤림 방지 */
+    .main-title {
+        text-align: center;
+        font-weight: bold;
+        color: #0F172A;
+        font-size: 22px !important;
+        margin-bottom: 8px !important;
+        white-space: nowrap !important;
+    }
+
+    /* 모바일 가로 7열 강제 유지 */
     div[data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: nowrap !important;
-        gap: 2px !important;
+        gap: 1px !important;
     }
 
     div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
@@ -40,52 +50,53 @@ st.markdown("""
         padding: 0px !important;
     }
 
-    /* 달력 날짜 버튼 스타일 */
+    /* 달력 날짜 버튼 스타일 (글자 짤림 완벽 방지) */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button {
         background-color: #F8FAFC !important;
-        border: 1px solid #E2E8F0 !important;
+        border: 1px solid #CBD5E1 !important;
         color: #0F172A !important;
-        padding: 2px 1px !important;
-        min-height: 36px !important;
-        font-size: 11px !important;
+        padding: 1px 0px !important;
+        min-height: 34px !important;
+        font-size: 10.5px !important;
         font-weight: 600 !important;
         border-radius: 4px !important;
         box-shadow: none !important;
         margin-bottom: 2px !important;
         white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
+        letter-spacing: -0.5px !important;
     }
 
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button:hover {
         background-color: #F1F5F9 !important;
-        border-color: #CBD5E1 !important;
+        border-color: #94A3B8 !important;
     }
 
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[kind="primary"] {
         background-color: #E0F2FE !important;
-        border: 2px solid #0284C7 !important;
+        border: 1.5px solid #0284C7 !important;
         color: #0369A1 !important;
     }
 
-    /* 일정 캡션 글자 크기 조정 */
+    /* 하단 개별 일정 캡션 글자 스타일 */
     div[data-testid="stColumn"] div[data-testid="stCaptionContainer"] {
-        font-size: 10px !important;
-        line-height: 1.2 !important;
+        font-size: 9.5px !important;
+        line-height: 1.1 !important;
+        margin: 0 !important;
+        padding: 0 !important;
         white-space: nowrap !important;
         overflow: hidden !important;
-        text-overflow: ellipsis !important;
+        letter-spacing: -0.5px !important;
     }
 
-    /* 네비게이션 및 하단 버튼 */
+    /* 네비게이션 및 버튼 */
     div.stButton > button[key="btn_prev_month"], 
     div.stButton > button[key="btn_next_month"] {
         background-color: #1E3A8A !important;
         color: white !important;
         font-weight: bold !important;
-        font-size: 13px !important;
+        font-size: 12px !important;
         border-radius: 6px !important;
-        padding: 6px 4px !important;
+        padding: 4px 2px !important;
     }
 
     div[data-testid="stFormSubmitButton"] > button {
@@ -318,9 +329,9 @@ def open_day_modal(target_date):
                 st.rerun()
 
 # =================================-------------------------
-# [1단] 최상단 년월 제목 표시
+# [1단] 최상단 년월 제목 표시 (글자 짤림 방지)
 # =================================-------------------------
-st.markdown(f"<h2 style='text-align: center; margin-bottom: 8px; font-weight: bold; color: #0F172A;'><span style='color: #1E3A8A;'>{year}년</span> <span style='color: #2E7D32;'>{month}월</span> 일정표</h2>", unsafe_allow_html=True)
+st.markdown(f"<div class='main-title'><span style='color: #1E3A8A;'>{year}년</span> <span style='color: #2E7D32;'>{month}월</span> 일정표</div>", unsafe_allow_html=True)
 
 # =================================-------------------------
 # [2단] 월간 달력 영역 (가로 7열 강제 정렬)
@@ -329,7 +340,7 @@ days_of_week = [("일", "#E53935"), ("월", "#333333"), ("화", "#333333"), ("�
 
 cols = st.columns(7)
 for idx, (day_name, color_code) in enumerate(days_of_week):
-    cols[idx].markdown(f"<div style='text-align: center; color: {color_code}; font-weight: bold; font-size: 14px; padding: 2px 0; line-height: 1.2; border-bottom: 2px solid #CBD5E1; margin-bottom: 4px;'>{day_name}</div>", unsafe_allow_html=True)
+    cols[idx].markdown(f"<div style='text-align: center; color: {color_code}; font-weight: bold; font-size: 13px; padding: 1px 0; border-bottom: 2px solid #CBD5E1; margin-bottom: 4px;'>{day_name}</div>", unsafe_allow_html=True)
 
 month_df = fetch_month_tasks(year, month)
 
@@ -347,13 +358,11 @@ for week in month_calendar:
                 curr_date = datetime.date(year, month, day)
                 date_str = curr_date.strftime("%Y-%m-%d")
 
-                is_holiday = date_str in HOLIDAYS
-                holiday_tag = f" {HOLIDAYS[date_str]}" if is_holiday else ""
-                
                 day_tasks = month_df[month_df['task_date'] == date_str] if not month_df.empty else pd.DataFrame()
                 day_total = len(day_tasks)
                 day_done = len(day_tasks[day_tasks['is_done'] == 1]) if day_total > 0 else 0
 
+                # 모바일 좁은 화면 최적화 버튼 레이블
                 btn_label = f"{day}일"
                 if day_total > 0:
                     btn_label += f"({day_done}/{day_total})"
@@ -365,18 +374,19 @@ for week in month_calendar:
                 if st.button(btn_label, key=f"btn_day_{day}", type=btn_type, use_container_width=True):
                     open_day_modal(curr_date)
 
-                # 하단 개별 일정 (단순 텍스트)
+                # 하단 개별 일정 (모바일 좁은 폭에 맞춰 1줄 깔끔 출력)
                 if day_total > 0:
                     for _, t in day_tasks.iterrows():
                         icon = "✅" if t['is_done'] else "📌"
-                        st.caption(f"{icon}{t['start_time']} {str(t['title'])[:4]}")
+                        # 제목은 최대 3글자로 제한하여 옆 칸과 겹치지 않게 조율
+                        st.caption(f"{icon}{str(t['title'])[:3]}")
 
 st.divider()
 
 # =================================-------------------------
 # [3단] 이전달 / 검색하기 / 다음달
 # =================================-------------------------
-col_nav1, col_nav2, col_nav3 = st.columns([1, 2.5, 1])
+col_nav1, col_nav2, col_nav3 = st.columns([1, 2.2, 1])
 
 with col_nav1:
     if st.button("◀ 이전달", key="btn_prev_month", use_container_width=True):
@@ -388,8 +398,8 @@ with col_nav1:
         st.rerun()
 
 with col_nav2:
-    with st.expander("🔍 **일정 / 회의록 검색하기**", expanded=False):
-        search_query = st.text_input("검색어 입력", placeholder="업무명, 메모 또는 회의록 키워드", label_visibility="collapsed")
+    with st.expander("🔍 **검색**", expanded=False):
+        search_query = st.text_input("검색어 입력", placeholder="업무명/회의록 검색", label_visibility="collapsed")
         if search_query:
             all_data = fetch_all_tasks()
             if not all_data.empty:
@@ -402,17 +412,17 @@ with col_nav2:
                 search_df = pd.DataFrame()
 
             if not search_df.empty:
-                st.success(f"총 {len(search_df)}건의 일정이 검색되었습니다.")
+                st.success(f"총 {len(search_df)}건 검색됨")
                 for _, s_row in search_df.iterrows():
                     status_icon = "✅ 완료" if s_row['is_done'] else "⏳ 진행중"
                     meeting_icon = " [📝 회의]" if s_row['is_meeting'] else ""
-                    st.write(f"• **{s_row['task_date']}** ({s_row['start_time']}~{s_row['end_time']}) | **[{status_icon}]** {s_row['title']}{meeting_icon}")
+                    st.write(f"• **{s_row['task_date']}** | **[{status_icon}]** {s_row['title']}{meeting_icon}")
                     if pd.notna(s_row['memo']) and s_row['memo']:
                         st.caption(f"  - 메모: {s_row['memo']}")
                     if s_row['is_meeting'] and pd.notna(s_row['meeting_notes']) and s_row['meeting_notes']:
                         st.caption(f"  - 회의록: {s_row['meeting_notes']}")
             else:
-                st.warning("검색 조건에 일치하는 일정이 없습니다.")
+                st.warning("검색 결과가 없습니다.")
 
 with col_nav3:
     if st.button("다음달 ▶", key="btn_next_month", use_container_width=True):
@@ -435,17 +445,17 @@ completion_rate = round((done_tasks / total_tasks * 100), 1) if total_tasks > 0 
 
 kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 with kpi1:
-    st.markdown("<p style='font-weight: bold; font-size: 12px; margin-bottom: 0;'>총 업무</p>", unsafe_allow_html=True)
-    st.markdown(f"<h4 style='color: #1E3A8A; font-weight: bold; margin-top: 0;'>{total_tasks}건</h4>", unsafe_allow_html=True)
+    st.markdown("<p style='font-weight: bold; font-size: 11px; margin-bottom: 0;'>총업무</p>", unsafe_allow_html=True)
+    st.markdown(f"<h4 style='color: #1E3A8A; font-weight: bold; margin-top: 0; font-size: 16px;'>{total_tasks}건</h4>", unsafe_allow_html=True)
 
 with kpi2:
-    st.markdown("<p style='font-weight: bold; font-size: 12px; margin-bottom: 0;'>완료</p>", unsafe_allow_html=True)
-    st.markdown(f"<h4 style='color: #2E7D32; font-weight: bold; margin-top: 0;'>{done_tasks}건</h4>", unsafe_allow_html=True)
+    st.markdown("<p style='font-weight: bold; font-size: 11px; margin-bottom: 0;'>완료</p>", unsafe_allow_html=True)
+    st.markdown(f"<h4 style='color: #2E7D32; font-weight: bold; margin-top: 0; font-size: 16px;'>{done_tasks}건</h4>", unsafe_allow_html=True)
 
 with kpi3:
-    st.markdown("<p style='font-weight: bold; font-size: 12px; margin-bottom: 0;'>회의</p>", unsafe_allow_html=True)
-    st.markdown(f"<h4 style='color: #D97706; font-weight: bold; margin-top: 0;'>{meeting_tasks}건</h4>", unsafe_allow_html=True)
+    st.markdown("<p style='font-weight: bold; font-size: 11px; margin-bottom: 0;'>회의</p>", unsafe_allow_html=True)
+    st.markdown(f"<h4 style='color: #D97706; font-weight: bold; margin-top: 0; font-size: 16px;'>{meeting_tasks}건</h4>", unsafe_allow_html=True)
 
 with kpi4:
-    st.markdown("<p style='font-weight: bold; font-size: 12px; margin-bottom: 0;'>이행률</p>", unsafe_allow_html=True)
-    st.markdown(f"<h4 style='color: #7C3AED; font-weight: bold; margin-top: 0;'>{completion_rate}%</h4>", unsafe_allow_html=True)
+    st.markdown("<p style='font-weight: bold; font-size: 11px; margin-bottom: 0;'>이행률</p>", unsafe_allow_html=True)
+    st.markdown(f"<h4 style='color: #7C3AED; font-weight: bold; margin-top: 0; font-size: 16px;'>{completion_rate}%</h4>", unsafe_allow_html=True)
