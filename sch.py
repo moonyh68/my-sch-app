@@ -5,19 +5,19 @@ import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 
 # 페이지 기본 설정
-st.set_page_config(page_title="월간 업무 일정표", layout="wide", page_icon="📅")
+st.set_page_config(page_title="월간 일정표", layout="wide", page_icon="📅")
 
 # ---------------------------------------------------------
-# Custom CSS (모바일 일정 글씨 전용 확대 & 가독성 최적화)
+# Custom CSS (PC 가독성 극대화 + 모바일 정갈한 7열 레이아웃)
 # ---------------------------------------------------------
 st.markdown("""
     <style>
-    /* 전체 여백 설정 */
+    /* 전체 여백 조정 */
     .block-container {
         padding-top: 1.2rem !important;
         padding-bottom: 1rem !important;
-        padding-left: 0.5rem !important;
-        padding-right: 0.5rem !important;
+        padding-left: 0.6rem !important;
+        padding-right: 0.6rem !important;
         max-width: 100% !important;
     }
     
@@ -25,14 +25,24 @@ st.markdown("""
         margin: 0.8rem 0 !important;
     }
 
-    /* [PC 환경] 기본 날짜 버튼 및 헤더 */
+    /* 최상단 년/월 제목 스타일 */
+    .year-month-header {
+        text-align: center;
+        font-weight: 800;
+        font-size: 26px !important;
+        margin-bottom: 15px !important;
+        line-height: 1.2 !important;
+        white-space: nowrap !important;
+    }
+
+    /* [PC 환경] 달력 날짜 버튼 */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button {
         background-color: #F8FAFC !important;
         border: 1px solid #CBD5E1 !important;
         color: #0F172A !important;
         padding: 4px 2px !important;
-        min-height: 38px !important;
-        font-size: 13px !important;
+        min-height: 40px !important;
+        font-size: 14px !important;
         font-weight: 700 !important;
         border-radius: 5px !important;
         box-shadow: none !important;
@@ -50,12 +60,12 @@ st.markdown("""
         color: #0369A1 !important;
     }
 
-    /* [PC 환경] 하단 일정 글씨 */
+    /* [PC 환경] 하단 일정 글씨 (가독성 14px 선명하게 확대) */
     div[data-testid="stColumn"] div[data-testid="stCaptionContainer"] {
-        font-size: 13px !important;
+        font-size: 14px !important;
         color: #0F172A !important;
         font-weight: 700 !important;
-        line-height: 1.3 !important;
+        line-height: 1.35 !important;
         margin: 2px 0 !important;
         padding: 0 !important;
         white-space: nowrap !important;
@@ -63,7 +73,7 @@ st.markdown("""
         text-overflow: ellipsis !important;
     }
 
-    /* 네비게이션 및 버튼 */
+    /* 네비게이션 및 제출 버튼 */
     div.stButton > button[key="btn_prev_month"], 
     div.stButton > button[key="btn_next_month"] {
         background-color: #1E3A8A !important;
@@ -82,9 +92,14 @@ st.markdown("""
         border-radius: 6px !important;
     }
 
-    /* 📱 [모바일 환경] 일정 글씨 전용 확대 적용 (너비 768px 이하) */
+    /* 📱 [모바일 환경 전용 CSS] */
     @media (max-width: 768px) {
-        /* 모바일 7열 가로 유지 */
+        .year-month-header {
+            font-size: 22px !important;
+            margin-bottom: 10px !important;
+        }
+
+        /* 모바일 7열 가로 완전 고정 및 높이 균일화 */
         div[data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
@@ -99,13 +114,22 @@ st.markdown("""
             padding: 0px !important;
         }
 
-        /* ★ 모바일 하단 일정 글씨만 크고 굵게 (13.5px / Bold 적용) */
+        /* 모바일 날짜 버튼 */
+        div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button {
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            min-height: 36px !important;
+            padding: 1px 0px !important;
+            letter-spacing: -0.5px !important;
+        }
+
+        /* 모바일 하단 일정 표시 점 스타일 (정갈한 높이 유지) */
         div[data-testid="stColumn"] div[data-testid="stCaptionContainer"] {
-            font-size: 13.5px !important;
+            font-size: 11px !important;
             font-weight: 800 !important;
-            color: #0F172A !important;
-            line-height: 1.35 !important;
-            letter-spacing: -0.4px !important;
+            color: #0284C7 !important;
+            text-align: center !important;
+            margin: 0 !important;
         }
     }
     </style>
@@ -331,9 +355,9 @@ def open_day_modal(target_date):
                 st.rerun()
 
 # =================================-------------------------
-# [1단] 최상단 년월 제목 표시
+# [1단] 최상단 년/월 표시 (① 요구사항: 일정표 단어 제거)
 # =================================-------------------------
-st.markdown(f"<h2 style='text-align: center; color: #0F172A; font-weight: 800; margin-bottom: 12px;'><span style='color: #1E3A8A;'>{year}년</span> <span style='color: #2E7D32;'>{month}월</span> 일정표</h2>", unsafe_allow_html=True)
+st.markdown(f"<div class='year-month-header'><span style='color: #1E3A8A;'>{year}년</span> <span style='color: #2E7D32;'>{month}월</span></div>", unsafe_allow_html=True)
 
 # =================================-------------------------
 # [2단] 월간 달력 영역
@@ -364,9 +388,10 @@ for week in month_calendar:
                 day_total = len(day_tasks)
                 day_done = len(day_tasks[day_tasks['is_done'] == 1]) if day_total > 0 else 0
 
+                # 날짜 버튼 텍스트 (모바일에서도 깔끔하도록 간결화)
                 btn_label = f"{day}일"
                 if day_total > 0:
-                    btn_label += f" ({day_done}/{day_total})"
+                    btn_label += f" [{day_total}]"
 
                 is_today = (curr_date == today)
                 btn_type = "primary" if is_today else "secondary"
@@ -375,11 +400,11 @@ for week in month_calendar:
                 if st.button(btn_label, key=f"btn_day_{day}", type=btn_type, use_container_width=True):
                     open_day_modal(curr_date)
 
-                # 하단 개별 일정 (시작시간 + 업무명 선명하게 출력)
+                # 하단 일정 표시 (PC는 글자 확대, 모바일은 2단 찌그러짐 예방)
                 if day_total > 0:
                     for _, t in day_tasks.iterrows():
                         icon = "✅" if t['is_done'] else "📌"
-                        st.caption(f"{icon} {t['start_time']} {str(t['title'])[:5]}")
+                        st.caption(f"{icon} {t['start_time']} {str(t['title'])[:6]}")
 
 st.divider()
 
