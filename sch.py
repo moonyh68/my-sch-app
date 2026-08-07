@@ -182,7 +182,7 @@ year = st.session_state.current_year
 month = st.session_state.current_month
 
 # ---------------------------------------------------------
-# 3. 팝업 모달 다이얼로그 (커서 Tab 이동 순서 최적화 적용)
+# 3. 팝업 모달 다이얼로그
 # ---------------------------------------------------------
 @st.dialog("📅 일자별 상세 일정 및 회의록", width="large")
 def open_day_modal(target_date):
@@ -298,7 +298,7 @@ def open_day_modal(target_date):
 st.markdown(f"<h2 style='text-align: center; margin-bottom: 12px; font-weight: bold; color: #0F172A;'><span style='color: #1E3A8A;'>{year}년</span> <span style='color: #2E7D32;'>{month}월</span> 일정표</h2>", unsafe_allow_html=True)
 
 # =================================-------------------------
-# [2단] 월간 달력 영역 (날짜 버튼만 활성화)
+# [2단] 월간 달력 영역 (일요일부터 시작하도록 수정 완료)
 # =================================-------------------------
 days_of_week = [("일", "#E53935"), ("월", "#333333"), ("화", "#333333"), ("수", "#333333"), ("목", "#333333"), ("금", "#333333"), ("토", "#1E88E5")]
 
@@ -307,6 +307,9 @@ for idx, (day_name, color_code) in enumerate(days_of_week):
     cols[idx].markdown(f"<div style='text-align: center; color: {color_code}; font-weight: bold; font-size: 17px; padding: 4px 0 8px 0; line-height: 1.3; border-bottom: 2px solid #CBD5E1; margin-bottom: 8px;'>{day_name}</div>", unsafe_allow_html=True)
 
 month_df = fetch_month_tasks(year, month)
+
+# ★ 핵심 수정: 달력 시작 요일을 일요일(SUNDAY)로 지정
+calendar.setfirstweekday(calendar.SUNDAY)
 month_calendar = calendar.monthcalendar(year, month)
 
 for week in month_calendar:
@@ -337,7 +340,7 @@ for week in month_calendar:
                 if st.button(btn_label, key=f"btn_day_{day}", type=btn_type, use_container_width=True):
                     open_day_modal(curr_date)
 
-                # 하단 개별 일정은 단순 텍스트(caption)로 깔끔하게 표시
+                # 하단 개별 일정 (단순 텍스트)
                 if day_total > 0:
                     for _, t in day_tasks.iterrows():
                         icon = "✅" if t['is_done'] else "📌"
@@ -399,7 +402,7 @@ with col_nav3:
 st.divider()
 
 # =================================-------------------------
-# [4단] 대시보드 요약 표시 (4개 KPI 카드)
+# [4단] 대시보드 요약 표시
 # =================================-------------------------
 total_tasks = len(month_df) if not month_df.empty else 0
 done_tasks = len(month_df[month_df['is_done'] == 1]) if total_tasks > 0 else 0
