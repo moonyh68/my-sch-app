@@ -38,14 +38,12 @@ def add_google_calendar_event(date_str, start_time_str, end_time_str, title, mem
         }
 
         created_event = service.events().insert(calendarId=CALENDAR_ID, body=event).execute()
-        return True, created_event.get('id'), None
+        return True, str(created_event.get('id', '')), None
     except Exception as e:
-        return False, None, str(e)
+        return False, "", str(e)
 
 def update_google_calendar_event(event_id, date_str, start_time_str, end_time_str, title, memo):
-    """구글 캘린더 기존 일정 수정"""
-    if not event_id or pd.isna(event_id) or str(event_id).strip() == "":
-        return True, None
+    """구글 캘린더 일정 수정 (event_id 없거나 실패 시 새로 생성)"""
     try:
         service = get_calendar_service()
         start_datetime = f"{date_str}T{start_time_str}:00"
@@ -58,10 +56,20 @@ def update_google_calendar_event(event_id, date_str, start_time_str, end_time_st
             'end': {'dateTime': end_datetime, 'timeZone': 'Asia/Seoul'},
         }
 
-        service.events().update(calendarId=CALENDAR_ID, eventId=str(event_id), body=event).execute()
-        return True, None
+        # event_id가 유효한 경우 기존 이벤트 수정 시도
+        if event_id and not pd.isna(event_id) and str(event_id).strip() != "":
+            try:
+                service.events().update(calendarId=CALENDAR_ID, eventId=str(event_id), body=event).execute()
+                return True, str(event_id), None
+            except Exception:
+                # 캘린더에 이벤트가 없는 경우 아래 신규 생성으로 진행
+                pass
+
+        # event_id가 없거나 기존 수정 실패 시 신규 등록
+        created_event = service.events().insert(calendarId=CALENDAR_ID, body=event).execute()
+        return True, str(created_event.get('id', '')), None
     except Exception as e:
-        return False, str(e)
+        return False, "", str(e)
 
 def delete_google_calendar_event(event_id):
     """구글 캘린더 일정 삭제"""
@@ -234,7 +242,6 @@ def fetch_all_tasks():
             for col in expected_cols:
                 if col not in df.columns:
                     df[col] = ""
-            # 데이터 타입 강제 변환 (Pandas 3.0 TypeError 방지)
             df = df.astype(object)
             df['id'] = pd.to_numeric(df['id'], errors='coerce').fillna(0).astype(int)
             df['is_done'] = pd.to_numeric(df['is_done'], errors='coerce').fillna(0).astype(int)
@@ -261,7 +268,6 @@ def insert_task(task_date, start_time, end_time, title, memo, is_done, is_meetin
     df = fetch_all_tasks()
     new_id = int(df['id'].max()) + 1 if not df.empty and df['id'].max() > 0 else 1
     
-    # 구글 캘린더 등록
     cal_success, cal_event_id, cal_err = add_google_calendar_event(task_date, start_time, end_time, title, memo)
     
     new_row = pd.DataFrame([{
@@ -285,7 +291,10 @@ def update_task_full(task_id, task_date, start_time, end_time, title, memo, is_m
     df = fetch_all_tasks()
     idx = df[df['id'] == int(task_id)].index
     if not idx.empty:
-        event_id = df.loc[idx[0], 'event_id'] if 'event_id' in df.columns else ""
+        old_event_id = str(df.loc[idx[0], 'event_id']) if 'event_id' in df.columns else ""
+        
+        # 구글 캘린더 연동 수행
+        cal_success, new_event_id, cal_err = update_google_calendar_event(old_event_id, task_date, start_time, end_time, title, memo)
         
         df.loc[idx, 'start_time'] = str(start_time)
         df.loc[idx, 'end_time'] = str(end_time)
@@ -293,10 +302,11 @@ def update_task_full(task_id, task_date, start_time, end_time, title, memo, is_m
         df.loc[idx, 'memo'] = str(memo)
         df.loc[idx, 'is_meeting'] = int(is_meeting)
         df.loc[idx, 'meeting_notes'] = str(meeting_notes)
-        save_all_tasks(df)
         
-        # 구글 캘린더 수정 동기화
-        cal_success, cal_err = update_google_calendar_event(event_id, task_date, start_time, end_time, title, memo)
+        if new_event_id:
+            df.loc[idx, 'event_id'] = str(new_event_id)
+            
+        save_all_tasks(df)
         return cal_success, cal_err
     return True, None
 
@@ -311,11 +321,10 @@ def delete_task(task_id):
     df = fetch_all_tasks()
     idx = df[df['id'] == int(task_id)].index
     if not idx.empty:
-        event_id = df.loc[idx[0], 'event_id'] if 'event_id' in df.columns else ""
+        event_id = str(df.loc[idx[0], 'event_id']) if 'event_id' in df.columns else ""
         updated_df = df[df['id'] != int(task_id)]
         save_all_tasks(updated_df)
         
-        # 구글 캘린더 삭제 동기화
         cal_success, cal_err = delete_google_calendar_event(event_id)
         return cal_success, cal_err
     return True, None
