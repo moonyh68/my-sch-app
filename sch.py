@@ -3,16 +3,56 @@ import datetime
 import calendar
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
 
 # 페이지 기본 설정
 st.set_page_config(page_title="월간 일정표", layout="wide", page_icon="📅")
 
 # ---------------------------------------------------------
-# Custom CSS (음수 마진 적용으로 날짜-일정 간격 완벽 밀착)
+# 구글 캘린더 연동 설정
+# ---------------------------------------------------------
+# ★ 본인의 구글 캘린더 이메일 주소를 입력해 주세요.
+CALENDAR_ID = "moonyh68@gmail.com" 
+
+def add_google_calendar_event(date_str, start_time_str, end_time_str, title, memo):
+    """구글 캘린더에 신규 일정을 등록하는 함수"""
+    try:
+        # Streamlit Secrets에서 서비스 계정 정보 로드
+        creds_dict = st.secrets["connections"]["gsheets"]
+        credentials = service_account.Credentials.from_service_account_info(
+            creds_dict,
+            scopes=['https://www.googleapis.com/auth/calendar']
+        )
+        service = build('calendar', 'v3', credentials=credentials)
+
+        start_datetime = f"{date_str}T{start_time_str}:00"
+        end_datetime = f"{date_str}T{end_time_str}:00"
+
+        event = {
+            'summary': title,
+            'description': memo if memo else '',
+            'start': {
+                'dateTime': start_datetime,
+                'timeZone': 'Asia/Seoul',
+            },
+            'end': {
+                'dateTime': end_datetime,
+                'timeZone': 'Asia/Seoul',
+            },
+        }
+
+        service.events().insert(calendarId=CALENDAR_ID, body=event).execute()
+        return True
+    except Exception as e:
+        st.error(f"구글 캘린더 연동 실패: {e}")
+        return False
+
+# ---------------------------------------------------------
+# Custom CSS (음수 마진 적용 최적화)
 # ---------------------------------------------------------
 st.markdown("""
     <style>
-    /* 상단 여백 확보 */
     .block-container {
         padding-top: 2.8rem !important;
         padding-bottom: 1rem !important;
@@ -29,7 +69,6 @@ st.markdown("""
         margin: 0.8rem 0 !important;
     }
 
-    /* Streamlit 컬럼 내부 기본 요소 간격(Gap) 및 마진 최소화 */
     div[data-testid="stColumn"] div[data-testid="stVerticalBlock"] {
         gap: 0px !important;
     }
@@ -38,7 +77,6 @@ st.markdown("""
         margin-bottom: 0px !important;
     }
 
-    /* [PC 환경] 달력 날짜 버튼 */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button {
         background-color: #FFFFFF !important;
         border: 1px solid #CBD5E1 !important;
@@ -60,7 +98,6 @@ st.markdown("""
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
     }
 
-    /* '오늘' 날짜 버튼 강조 */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[kind="primary"] {
         background-color: #F0F9FF !important;
         border: 2px solid #0284C7 !important;
@@ -68,12 +105,11 @@ st.markdown("""
         font-weight: 800 !important;
     }
 
-    /* ★ 음수 마진(-6px)을 이용하여 일정 텍스트를 날짜 버튼 바로 밑으로 밀착 */
     .task-container {
         background-color: transparent !important;
         border: none !important;
         padding: 0px !important;
-        margin-top: -0.1px !important; /* 음수 마진으로 버튼 밑으로 바짝 끌어올림 */
+        margin-top: -0.1px !important;
     }
 
     .task-item {
@@ -87,7 +123,6 @@ st.markdown("""
         text-overflow: ellipsis !important;
     }
 
-    /* 네비게이션 및 제출 버튼 */
     div.stButton > button[key="btn_prev_month"], 
     div.stButton > button[key="btn_next_month"] {
         background-color: #1E3A8A !important;
@@ -106,20 +141,17 @@ st.markdown("""
         border-radius: 6px !important;
     }
 
-    /* 검색 버튼 한 줄 고정 */
     div[data-testid="stExpander"] summary p {
         font-size: 13px !important;
         white-space: nowrap !important;
         word-break: keep-all !important;
     }
 
-    /* 📱 [모바일 환경 전용 CSS] */
     @media (max-width: 768px) {
         .block-container {
             padding-top: 2.2rem !important;
         }
 
-        /* 모바일 7열 가로 고정 */
         div[data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
@@ -143,7 +175,7 @@ st.markdown("""
         }
 
         .task-container {
-            margin-top: -4px !important; /* 모바일 전용 밀착 마진 */
+            margin-top: -0.1px !important;
         }
 
         .task-item {
@@ -213,6 +245,9 @@ def insert_task(task_date, start_time, end_time, title, memo, is_done, is_meetin
     
     updated_df = pd.concat([df, new_row], ignore_index=True)
     save_all_tasks(updated_df)
+    
+    # ★ 구글 캘린더 실시간 연동 등록
+    add_google_calendar_event(task_date, start_time, end_time, title, memo)
 
 def update_task_full(task_id, start_time, end_time, title, memo, is_meeting, meeting_notes):
     df = fetch_all_tasks()
@@ -369,7 +404,7 @@ def open_day_modal(target_date):
                     is_meeting,
                     meeting_notes
                 )
-                st.success("일정이 성공적으로 저장되었습니다.")
+                st.success("일정이 성공적으로 저장되었으며, 구글 캘린더에 연동되었습니다.")
                 st.rerun()
 
 # =================================-------------------------
@@ -391,7 +426,6 @@ for idx, (day_name, color_code) in enumerate(days_of_week):
 
 month_df = fetch_month_tasks(year, month)
 
-# 달력 시작 요일을 일요일(SUNDAY)로 설정
 calendar.setfirstweekday(calendar.SUNDAY)
 month_calendar = calendar.monthcalendar(year, month)
 
@@ -416,11 +450,9 @@ for week in month_calendar:
                 is_today = (curr_date == today)
                 btn_type = "primary" if is_today else "secondary"
 
-                # 날짜 버튼 클릭 시 팝업 열기
                 if st.button(btn_label, key=f"btn_day_{day}", type=btn_type, use_container_width=True):
                     open_day_modal(curr_date)
 
-                # 날짜 버튼 밑 박스를 제거하고 밀착되어 나열되는 일정 텍스트
                 if day_total > 0:
                     task_items = []
                     for _, t in day_tasks.iterrows():
