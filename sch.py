@@ -64,7 +64,7 @@ def update_google_calendar_event(event_id, date_str, start_time_str, end_time_st
                 pass
 
         created_event = service.events().insert(calendarId=CALENDAR_ID, body=event).execute()
-        return True, str(created_event.get('id', '')), None
+        return True, str(created_event.get('id', '', None)), None
     except Exception as e:
         return False, "", str(e)
 
@@ -80,12 +80,12 @@ def delete_google_calendar_event(event_id):
         return False, str(e)
 
 # ---------------------------------------------------------
-# Custom CSS (바탕색 제거 깔끔 디자인)
+# Custom CSS (버튼 높이 최소화 및 파스텔톤 배경 상자)
 # ---------------------------------------------------------
 st.markdown("""
     <style>
     .block-container {
-        padding-top: 2.2rem !important;
+        padding-top: 2.0rem !important;
         padding-bottom: 1rem !important;
         padding-left: 0.6rem !important;
         padding-right: 0.6rem !important;
@@ -109,16 +109,16 @@ st.markdown("""
         margin-bottom: 0px !important;
     }
 
-    /* 기본 달력 버튼 스타일링 */
+    /* ★ 1. 날짜 버튼 높이 최소화 */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button {
         background-color: #FFFFFF !important;
         border: 1px solid #E2E8F0 !important;
         color: #1E293B !important;
-        padding: 4px 2px !important;
-        min-height: 38px !important;
-        font-size: 14px !important;
+        padding: 2px 2px !important;       /* 상하 패딩 최소화 */
+        min-height: 28px !important;       /* 버튼 최소 높이 축소 */
+        font-size: 13px !important;
         font-weight: 700 !important;
-        border-radius: 8px !important;
+        border-radius: 6px !important;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
         transition: all 0.15s ease-in-out !important;
         margin-bottom: 0px !important;
@@ -127,7 +127,6 @@ st.markdown("""
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button:hover {
         background-color: #F8FAFC !important;
         border-color: #94A3B8 !important;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08) !important;
     }
 
     /* '오늘' 날짜 하이라이트 */
@@ -143,30 +142,35 @@ st.markdown("""
         background-color: transparent !important;
         border: none !important;
         padding: 0px !important;
-        margin-top: -0.1px !important;
+        margin-top: 2px !important;
     }
 
-    /* ★ 일정 텍스트 (바탕색 제거) */
+    /* ★ 2. 연한 파스텔톤 일정 배경 카드 */
     .task-item {
-        font-size: 11.5px !important;
+        font-size: 11px !important;
         font-weight: 400 !important;
-        color: #1E293B !important;
-        line-height: 1.35 !important;
-        margin-bottom: 3px !important;
+        color: #0F172A !important;
+        line-height: 1.3 !important;
+        margin-bottom: 2px !important;
         white-space: normal !important;
         word-break: break-all !important;
-        padding: 1px 2px !important;
-        background-color: transparent !important; /* 바탕색 제거 */
+        padding: 2px 4px !important;
+        border-radius: 4px !important;
+        background-color: #F0F9FF !important; /* 연한 스카이블루 */
+        border-left: 3px solid #38BDF8 !important;
     }
 
     .task-item-done {
+        background-color: #DCFCE7 !important; /* 연한 민트 */
+        border-left: 3px solid #22C55E !important;
         color: #166534 !important;
         text-decoration: line-through !important;
     }
 
     .task-item-meeting {
-        color: #D97706 !important;
-        font-weight: 500 !important;
+        background-color: #FEF3C7 !important; /* 연한 따뜻한 살구 */
+        border-left: 3px solid #F59E0B !important;
+        color: #92400E !important;
     }
 
     /* 네비게이션 버튼 및 폼 제출 버튼 */
@@ -177,7 +181,7 @@ st.markdown("""
         font-weight: 700 !important;
         font-size: 13px !important;
         border-radius: 8px !important;
-        padding: 6px 10px !important;
+        padding: 5px 10px !important;
     }
 
     div[data-testid="stFormSubmitButton"] > button {
@@ -193,7 +197,7 @@ st.markdown("""
         background-color: #FFFFFF !important;
         border: 1px solid #E2E8F0 !important;
         border-radius: 10px !important;
-        padding: 12px 14px !important;
+        padding: 10px 12px !important;
         box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
         text-align: center !important;
     }
@@ -201,7 +205,7 @@ st.markdown("""
     /* 📱 [모바일 반응형 CSS] */
     @media (max-width: 768px) {
         .block-container {
-            padding-top: 1.8rem !important;
+            padding-top: 1.5rem !important;
         }
 
         div[data-testid="stHorizontalBlock"] {
@@ -219,24 +223,17 @@ st.markdown("""
         }
 
         div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button {
-            font-size: 11.5px !important;
+            font-size: 11px !important;
             font-weight: 700 !important;
-            min-height: 35px !important;
+            min-height: 25px !important;
             padding: 1px 0px !important;
-            letter-spacing: -0.5px !important;
-        }
-
-        .task-container {
-            margin-top: -0.1px !important;
         }
 
         .task-item {
-            font-size: 10px !important;
-            font-weight: 400 !important;
-            line-height: 1.25 !important;
-            letter-spacing: -0.5px !important;
+            font-size: 9.5px !important;
+            line-height: 1.2 !important;
             margin-bottom: 2px !important;
-            padding: 0px 1px !important;
+            padding: 1px 2px !important;
         }
     }
     </style>
@@ -527,7 +524,7 @@ for week in month_calendar:
                 if st.button(btn_label, key=f"btn_day_{day}", type=btn_type, use_container_width=True):
                     open_day_modal(curr_date)
 
-                # 바탕색 없는 깔끔한 일정 텍스트
+                # 파스텔톤 연한 배경 상자로 표출
                 if day_total > 0:
                     task_items = []
                     for _, t in day_tasks.iterrows():
