@@ -80,7 +80,7 @@ def delete_google_calendar_event(event_id):
         return False, str(e)
 
 # ---------------------------------------------------------
-# Custom CSS (미니멀 도트 / Text-Only Minimalist 적용)
+# Custom CSS (일자 간 경계선 Grid 추가)
 # ---------------------------------------------------------
 st.markdown("""
     <style>
@@ -98,7 +98,7 @@ st.markdown("""
 
     hr {
         margin: 0.8rem 0 !important;
-        border-color: #F1F5F9 !important;
+        border-color: #E2E8F0 !important;
     }
 
     div[data-testid="stColumn"] div[data-testid="stVerticalBlock"] {
@@ -109,10 +109,23 @@ st.markdown("""
         margin-bottom: 0px !important;
     }
 
-    /* ★ 3. 미니멀 도트/인디케이터 (Text-Only) 날짜 버튼 */
+    /* ★ [핵심] 달력 각 일자별 열(Column) 구분 세로선 및 가로선 경계 스타일 */
+    div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
+        border-right: 1px solid #E2E8F0 !important; /* 오른쪽 세로 경계선 */
+        border-bottom: 1px solid #E2E8F0 !important; /* 아래쪽 가로 경계선 */
+        padding: 4px 6px !important;
+        min-height: 90px !important; /* 일자 박스 세로 높이 고정 */
+    }
+
+    /* 첫 번째 열(일요일) 왼쪽 세로 테두리 추가 */
+    div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:first-child {
+        border-left: 1px solid #E2E8F0 !important;
+    }
+
+    /* 날짜 버튼 스타일 (미니멀) */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button {
-        background-color: transparent !important; /* 배경 박스 완전히 제거 */
-        border: none !important;                  /* 테두리 제거 */
+        background-color: transparent !important;
+        border: none !important;
         color: #475569 !important;
         padding: 2px 2px !important;
         min-height: 26px !important;
@@ -121,15 +134,15 @@ st.markdown("""
         border-radius: 20px !important;
         box-shadow: none !important;
         transition: all 0.15s ease-in-out !important;
-        margin-bottom: 0px !important;
+        margin-bottom: 2px !important;
     }
 
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button:hover {
-        background-color: #F1F5F9 !important;     /* 마우스 오버 시에만 소프트 원형 인디케이터 표출 */
+        background-color: #F1F5F9 !important;
         color: #0284C7 !important;
     }
 
-    /* '오늘' 날짜 인디케이터 (원형 포인트) */
+    /* '오늘' 날짜 원형 하이라이트 */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[kind="primary"] {
         background-color: #0284C7 !important;
         border: none !important;
@@ -174,11 +187,11 @@ st.markdown("""
         color: #92400E !important;
     }
 
-    /* 네비게이션 버튼 (이전달/다음달 - 미니멀 라운드) */
+    /* 네비게이션 버튼 (이전달/다음달) */
     div.stButton > button[key="btn_prev_month"], 
     div.stButton > button[key="btn_next_month"] {
         background-color: #F1F5F9 !important;
-        border: none !important;
+        border: 1px solid #CBD5E1 !important;
         color: #334155 !important;
         font-weight: 700 !important;
         font-size: 13px !important;
@@ -203,7 +216,7 @@ st.markdown("""
     /* 하단 KPI 대시보드 카드 스타일 */
     .kpi-card {
         background-color: #FFFFFF !important;
-        border: 1px solid #F1F5F9 !important;
+        border: 1px solid #E2E8F0 !important;
         border-radius: 10px !important;
         padding: 10px 12px !important;
         box-shadow: 0 1px 2px rgba(0,0,0,0.02) !important;
@@ -220,14 +233,15 @@ st.markdown("""
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
-            gap: 1px !important;
+            gap: 0px !important;
         }
 
         div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
             width: 14.28% !important;
             min-width: 0px !important;
             flex: 1 1 14.28% !important;
-            padding: 0px !important;
+            padding: 2px 1px !important;
+            min-height: 70px !important;
         }
 
         div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button {
@@ -497,7 +511,7 @@ days_of_week = [("일", "#EF4444"), ("월", "#334155"), ("화", "#334155"), ("�
 
 cols = st.columns(7)
 for idx, (day_name, color_code) in enumerate(days_of_week):
-    cols[idx].markdown(f"<div style='text-align: center; color: {color_code}; font-weight: 800; font-size: 15px; padding: 3px 0; border-bottom: 2px solid #E2E8F0; margin-bottom: 6px;'>{day_name}</div>", unsafe_allow_html=True)
+    cols[idx].markdown(f"<div style='text-align: center; color: {color_code}; font-weight: 800; font-size: 15px; padding: 3px 0; border-top: 1px solid #E2E8F0; border-bottom: 2px solid #CBD5E1; margin-bottom: 0px;'>{day_name}</div>", unsafe_allow_html=True)
 
 month_df = fetch_month_tasks(year, month)
 
