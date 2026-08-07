@@ -234,10 +234,15 @@ def fetch_all_tasks():
             for col in expected_cols:
                 if col not in df.columns:
                     df[col] = ""
-            df['id'] = df['id'].astype(int)
-            df['is_done'] = df['is_done'].astype(int)
-            df['is_meeting'] = df['is_meeting'].astype(int)
-            df['task_date'] = df['task_date'].astype(str)
+            # 데이터 타입 강제 변환 (Pandas 3.0 TypeError 방지)
+            df = df.astype(object)
+            df['id'] = pd.to_numeric(df['id'], errors='coerce').fillna(0).astype(int)
+            df['is_done'] = pd.to_numeric(df['is_done'], errors='coerce').fillna(0).astype(int)
+            df['is_meeting'] = pd.to_numeric(df['is_meeting'], errors='coerce').fillna(0).astype(int)
+            
+            str_cols = ['task_date', 'start_time', 'end_time', 'title', 'memo', 'meeting_notes', 'event_id']
+            for col in str_cols:
+                df[col] = df[col].fillna("").astype(str)
         return df
     except Exception as e:
         return pd.DataFrame(columns=['id', 'task_date', 'start_time', 'end_time', 'title', 'memo', 'is_done', 'is_meeting', 'meeting_notes', 'event_id'])
@@ -270,7 +275,7 @@ def insert_task(task_date, start_time, end_time, title, memo, is_done, is_meetin
         'is_meeting': int(is_meeting),
         'meeting_notes': str(meeting_notes),
         'event_id': str(cal_event_id) if cal_event_id else ""
-    }])
+    }]).astype(object)
     
     updated_df = pd.concat([df, new_row], ignore_index=True)
     save_all_tasks(updated_df)
