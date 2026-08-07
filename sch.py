@@ -73,7 +73,7 @@ st.markdown("""
         background-color: transparent !important;
         border: none !important;
         padding: 0px !important;
-        margin-top: -6px !important; /* 음수 마진으로 버튼 밑으로 바짝 끌어올림 */
+        margin-top: -4px !important; /* 음수 마진으로 버튼 밑으로 바짝 끌어올림 */
     }
 
     .task-item {
