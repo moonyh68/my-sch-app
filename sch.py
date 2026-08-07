@@ -80,7 +80,7 @@ def delete_google_calendar_event(event_id):
         return False, str(e)
 
 # ---------------------------------------------------------
-# Custom CSS (그라데이션 & 그림자 Elevated 스타일 적용)
+# Custom CSS (플랫 네오모피즘 Neumorphism Style 적용)
 # ---------------------------------------------------------
 st.markdown("""
     <style>
@@ -109,40 +109,37 @@ st.markdown("""
         margin-bottom: 0px !important;
     }
 
-    /* ★ 은은한 그라데이션 & 입체 그림자(Elevated) 날짜 버튼 */
+    /* ★ 1. 네오모피즘 소프트 UI 날짜 버튼 */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button {
-        background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%) !important;
-        border: 1px solid #CBD5E1 !important;
-        color: #1E293B !important;
+        background: #F1F5F9 !important;
+        border: 1px solid #E2E8F0 !important;
+        color: #334155 !important;
         padding: 2px 2px !important;
         min-height: 28px !important;
         font-size: 13px !important;
         font-weight: 700 !important;
-        border-radius: 8px !important;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03) !important;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        border-radius: 10px !important;
+        /* 이중 안팎 음영으로 소프트한 볼록 입체감 구현 */
+        box-shadow: 3px 3px 6px #CBD5E1, -3px -3px 6px #FFFFFF !important;
+        transition: all 0.2s ease !important;
         margin-bottom: 0px !important;
     }
 
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button:hover {
-        background: linear-gradient(180deg, #FFFFFF 0%, #F1F5F9 100%) !important;
-        border-color: #94A3B8 !important;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06) !important;
-        transform: translateY(-1.5px) !important; /* 살짝 떠오르는 효과 */
+        background: #E2E8F0 !important;
+        color: #0F172A !important;
+        /* 클릭/호버 시 버튼이 눌리는 듯한 오목한 효과 */
+        box-shadow: inset 2px 2px 4px #CBD5E1, inset -2px -2px 4px #FFFFFF !important;
     }
 
-    /* '오늘' 날짜 하이라이트 (Elevated 그라데이션) */
+    /* '오늘' 날짜 하이라이트 (네오모피즘 포인트) */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[kind="primary"] {
-        background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%) !important;
+        background: #0284C7 !important;
         border: none !important;
         color: #FFFFFF !important;
         font-weight: 800 !important;
-        box-shadow: 0 4px 10px rgba(2, 132, 199, 0.35) !important;
-    }
-
-    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[kind="primary"]:hover {
-        background: linear-gradient(135deg, #0369A1 0%, #075985 100%) !important;
-        box-shadow: 0 6px 14px rgba(2, 132, 199, 0.45) !important;
+        border-radius: 10px !important;
+        box-shadow: 3px 3px 7px #BAE6FD, -3px -3px 7px #FFFFFF !important;
     }
 
     /* 일정 텍스트 컨테이너 */
@@ -153,20 +150,20 @@ st.markdown("""
         margin-top: 3px !important;
     }
 
-    /* 연한 파스텔톤 일정 배경 카드 */
+    /* 연한 파스텔톤 일정 배경 카드 (네오모피즘 그림자 융합) */
     .task-item {
         font-size: 11px !important;
         font-weight: 400 !important;
         color: #0F172A !important;
         line-height: 1.3 !important;
-        margin-bottom: 2px !important;
+        margin-bottom: 3px !important;
         white-space: normal !important;
         word-break: break-all !important;
-        padding: 2px 5px !important;
-        border-radius: 5px !important;
+        padding: 3px 5px !important;
+        border-radius: 6px !important;
         background-color: #F0F9FF !important;
         border-left: 3px solid #38BDF8 !important;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+        box-shadow: 2px 2px 4px #E2E8F0 !important;
     }
 
     .task-item-done {
@@ -182,42 +179,42 @@ st.markdown("""
         color: #92400E !important;
     }
 
-    /* 네비게이션 버튼 (이전달/다음달 - Elevated 스타일) */
+    /* 네비게이션 버튼 (이전달/다음달 - 네오모피즘 다크) */
     div.stButton > button[key="btn_prev_month"], 
     div.stButton > button[key="btn_next_month"] {
-        background: linear-gradient(180deg, #1E293B 0%, #0F172A 100%) !important;
+        background: #1E293B !important;
         color: white !important;
         font-weight: 700 !important;
         font-size: 13px !important;
-        border-radius: 8px !important;
+        border-radius: 10px !important;
         padding: 5px 12px !important;
         border: none !important;
-        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25) !important;
-        transition: all 0.2s ease-in-out !important;
+        box-shadow: 3px 3px 6px #CBD5E1, -3px -3px 6px #FFFFFF !important;
+        transition: all 0.2s ease !important;
     }
 
     div.stButton > button[key="btn_prev_month"]:hover, 
     div.stButton > button[key="btn_next_month"]:hover {
-        transform: translateY(-1px) !important;
-        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.35) !important;
+        background: #0F172A !important;
+        box-shadow: inset 2px 2px 4px #020617 !important;
     }
 
     div[data-testid="stFormSubmitButton"] > button {
-        background: linear-gradient(180deg, #166534 0%, #14532D 100%) !important;
+        background: #166534 !important;
         color: white !important;
         font-weight: bold !important;
         font-size: 15px !important;
-        border-radius: 8px !important;
-        box-shadow: 0 2px 6px rgba(22, 101, 52, 0.25) !important;
+        border-radius: 10px !important;
+        box-shadow: 3px 3px 6px #CBD5E1, -3px -3px 6px #FFFFFF !important;
     }
 
-    /* 하단 KPI 대시보드 카드 스타일 */
+    /* 하단 KPI 대시보드 카드 스타일 (네오모피즘 프레임) */
     .kpi-card {
-        background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%) !important;
+        background: #F8FAFC !important;
         border: 1px solid #E2E8F0 !important;
-        border-radius: 10px !important;
+        border-radius: 12px !important;
         padding: 10px 12px !important;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.04) !important;
+        box-shadow: 4px 4px 8px #E2E8F0, -4px -4px 8px #FFFFFF !important;
         text-align: center !important;
     }
 
@@ -246,6 +243,8 @@ st.markdown("""
             font-weight: 700 !important;
             min-height: 25px !important;
             padding: 1px 0px !important;
+            border-radius: 8px !important;
+            box-shadow: 2px 2px 4px #CBD5E1, -2px -2px 4px #FFFFFF !important;
         }
 
         .task-item {
