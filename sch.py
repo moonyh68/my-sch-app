@@ -8,13 +8,13 @@ from streamlit_gsheets import GSheetsConnection
 st.set_page_config(page_title="월간 일정표", layout="wide", page_icon="📅")
 
 # ---------------------------------------------------------
-# Custom CSS (상단 가림 방지, 일자-일정 간격 완전 밀착, 모바일 고정)
+# Custom CSS (적정 간격 확보 & 시각적 카드 상자 디자인)
 # ---------------------------------------------------------
 st.markdown("""
     <style>
-    /* 상단 헤더 바가 제목을 가리지 않도록 여백 확보 */
+    /* 상단 여백 확보 */
     .block-container {
-        padding-top: 3rem !important;
+        padding-top: 2.8rem !important;
         padding-bottom: 1rem !important;
         padding-left: 0.5rem !important;
         padding-right: 0.5rem !important;
@@ -27,15 +27,6 @@ st.markdown("""
 
     hr {
         margin: 0.8rem 0 !important;
-    }
-
-    /* ★ 날짜 버튼과 하단 일정 텍스트 사이 수직 여백(gap) 완전 제거 */
-    div[data-testid="stColumn"] div[data-testid="stVerticalBlock"] {
-        gap: 0px !important;
-    }
-
-    div[data-testid="stColumn"] div.stButton {
-        margin-bottom: 0px !important;
     }
 
     /* [PC 환경] 달력 날짜 버튼 */
@@ -63,18 +54,24 @@ st.markdown("""
         color: #0369A1 !important;
     }
 
-    /* ★ 일정 박스 상단 여백 최소화 */
+    /* ★ 일정 목록 스타일 (적정 간격 및 카드 상자 디자인 적용) */
     .task-box {
+        background-color: #F8FAFC !important;
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 4px !important;
+        padding: 3px 4px !important;
+        margin-top: 3px !important;
         font-size: 12.5px !important;
-        font-weight: 700 !important;
-        color: #0F172A !important;
-        line-height: 1.15 !important;
-        margin-top: 2px !important;
-        margin-bottom: 0px !important;
-        padding: 0px !important;
+        font-weight: 600 !important;
+        color: #1E293B !important;
+        line-height: 1.35 !important;
+    }
+
+    .task-item {
         white-space: nowrap !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
+        margin-bottom: 1px !important;
     }
 
     /* 네비게이션 및 제출 버튼 */
@@ -106,7 +103,7 @@ st.markdown("""
     /* 📱 [모바일 환경 전용 CSS] */
     @media (max-width: 768px) {
         .block-container {
-            padding-top: 2.5rem !important;
+            padding-top: 2.2rem !important;
         }
 
         /* 모바일 7열 가로 고정 */
@@ -132,12 +129,13 @@ st.markdown("""
             letter-spacing: -0.5px !important;
         }
 
-        /* 모바일 일정 줄간격 및 글자 설정 */
+        /* 모바일 일정 글씨 및 줄간격 최적화 */
         .task-box {
             font-size: 11px !important;
-            line-height: 1.1 !important;
+            line-height: 1.25 !important;
             letter-spacing: -0.5px !important;
-            margin-top: 1px !important;
+            padding: 2px 1px !important;
+            margin-top: 2px !important;
         }
 
         /* 모바일 검색창 텍스트 */
@@ -408,13 +406,13 @@ for week in month_calendar:
                 if st.button(btn_label, key=f"btn_day_{day}", type=btn_type, use_container_width=True):
                     open_day_modal(curr_date)
 
-                # 날짜 버튼 바로 밑에 일정 표시 (간격 완전 밀착)
+                # 시각적으로 편안하고 정돈된 둥근 상자 내부 일정 정렬
                 if day_total > 0:
-                    task_lines = []
+                    task_items = []
                     for _, t in day_tasks.iterrows():
                         icon = "✅" if t['is_done'] else "📌"
-                        task_lines.append(f"{icon} {t['start_time']} {str(t['title'])[:6]}")
-                    tasks_html = "<br>".join(task_lines)
+                        task_items.append(f"<div class='task-item'>{icon} {t['start_time']} {str(t['title'])[:6]}</div>")
+                    tasks_html = "".join(task_items)
                     st.markdown(f"<div class='task-box'>{tasks_html}</div>", unsafe_allow_html=True)
 
 st.divider()
