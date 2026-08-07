@@ -64,7 +64,7 @@ def update_google_calendar_event(event_id, date_str, start_time_str, end_time_st
                 pass
 
         created_event = service.events().insert(calendarId=CALENDAR_ID, body=event).execute()
-        return True, str(created_event.get('id', '', None)), None
+        return True, str(created_event.get('id', '')), None
     except Exception as e:
         return False, "", str(e)
 
@@ -109,13 +109,13 @@ st.markdown("""
         margin-bottom: 0px !important;
     }
 
-    /* ★ 1. 날짜 버튼 높이 최소화 */
+    /* 날짜 버튼 높이 최소화 */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button {
         background-color: #FFFFFF !important;
         border: 1px solid #E2E8F0 !important;
         color: #1E293B !important;
-        padding: 2px 2px !important;       /* 상하 패딩 최소화 */
-        min-height: 28px !important;       /* 버튼 최소 높이 축소 */
+        padding: 2px 2px !important;
+        min-height: 28px !important;
         font-size: 13px !important;
         font-weight: 700 !important;
         border-radius: 6px !important;
@@ -145,7 +145,7 @@ st.markdown("""
         margin-top: 2px !important;
     }
 
-    /* ★ 2. 연한 파스텔톤 일정 배경 카드 */
+    /* 연한 파스텔톤 일정 배경 카드 */
     .task-item {
         font-size: 11px !important;
         font-weight: 400 !important;
@@ -156,19 +156,19 @@ st.markdown("""
         word-break: break-all !important;
         padding: 2px 4px !important;
         border-radius: 4px !important;
-        background-color: #F0F9FF !important; /* 연한 스카이블루 */
+        background-color: #F0F9FF !important;
         border-left: 3px solid #38BDF8 !important;
     }
 
     .task-item-done {
-        background-color: #DCFCE7 !important; /* 연한 민트 */
+        background-color: #DCFCE7 !important;
         border-left: 3px solid #22C55E !important;
         color: #166534 !important;
         text-decoration: line-through !important;
     }
 
     .task-item-meeting {
-        background-color: #FEF3C7 !important; /* 연한 따뜻한 살구 */
+        background-color: #FEF3C7 !important;
         border-left: 3px solid #F59E0B !important;
         color: #92400E !important;
     }
@@ -408,12 +408,11 @@ def open_day_modal(target_date):
                             edit_is_meeting,
                             edit_meeting_notes
                         )
-                        if success:
-                            st.session_state["cal_status"] = "success"
-                            st.session_state["cal_msg"] = "일정 수정 내용이 구글 캘린더에 동기화되었습니다."
-                        else:
+                        if not success:
                             st.session_state["cal_status"] = "error"
                             st.session_state["cal_msg"] = f"구글 캘린더 수정 실패: {err_msg}"
+                        else:
+                            st.session_state["cal_status"] = None
                         st.rerun()
 
                 col_chk, col_del = st.columns([2, 1])
@@ -426,12 +425,11 @@ def open_day_modal(target_date):
                 with col_del:
                     if st.button("🗑️ 삭제", key=f"del_btn_{row['id']}", use_container_width=True):
                         success, err_msg = delete_task(row['id'])
-                        if success:
-                            st.session_state["cal_status"] = "success"
-                            st.session_state["cal_msg"] = "일정이 삭제되었으며 구글 캘린더에서도 제거되었습니다."
-                        else:
+                        if not success:
                             st.session_state["cal_status"] = "error"
                             st.session_state["cal_msg"] = f"구글 캘린더 삭제 실패: {err_msg}"
+                        else:
+                            st.session_state["cal_status"] = None
                         st.rerun()
         st.divider()
 
@@ -466,26 +464,24 @@ def open_day_modal(target_date):
                     is_meeting,
                     meeting_notes
                 )
-                if success:
-                    st.session_state["cal_status"] = "success"
-                    st.session_state["cal_msg"] = "새 일정이 저장되었으며 구글 캘린더에도 수록되었습니다."
-                else:
+                if not success:
                     st.session_state["cal_status"] = "error"
                     st.session_state["cal_msg"] = f"구글 캘린더 등록 실패: {err_msg}"
+                else:
+                    st.session_state["cal_status"] = None
                 st.rerun()
 
 # =================================-------------------------
-# [1단] 최상단 년/월 표시 및 상태 메시지 영역
+# [1단] 최상단 년/월 표시 및 에러 상태 메시지 영역
 # =================================-------------------------
 st.markdown(
     f"<h2 style='text-align: center; font-weight: 800; font-size: 26px; margin: 0 0 10px 0; padding: 0;'><span style='color: #1E3A8A;'>{year}년</span> <span style='color: #166534;'>{month}월</span></h2>",
     unsafe_allow_html=True
 )
 
+# 에러가 발생한 경우에만 경고창 출력
 if st.session_state.get("cal_status") == "error":
     st.error(f"⚠️ **동기화 오류**: {st.session_state.get('cal_msg')}")
-elif st.session_state.get("cal_status") == "success":
-    st.success(f"✅ {st.session_state.get('cal_msg')}")
 
 # =================================-------------------------
 # [2단] 월간 달력 영역
@@ -524,7 +520,7 @@ for week in month_calendar:
                 if st.button(btn_label, key=f"btn_day_{day}", type=btn_type, use_container_width=True):
                     open_day_modal(curr_date)
 
-                # 파스텔톤 연한 배경 상자로 표출
+                # 일정 박스 표출
                 if day_total > 0:
                     task_items = []
                     for _, t in day_tasks.iterrows():
