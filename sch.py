@@ -16,7 +16,7 @@ st.set_page_config(page_title="월간 일정표", layout="wide", page_icon="📅
 CALENDAR_ID = "moonyh68@gmail.com" 
 
 def add_google_calendar_event(date_str, start_time_str, end_time_str, title, memo):
-    """구글 캘린더에 신규 일정을 등록하는 함수"""
+    """구글 캘린더에 신규 일정을 등록하는 함수 (에러 진단 강화)"""
     try:
         # Streamlit Secrets에서 서비스 계정 정보 로드
         creds_dict = st.secrets["connections"]["gsheets"]
@@ -43,10 +43,9 @@ def add_google_calendar_event(date_str, start_time_str, end_time_str, title, mem
         }
 
         service.events().insert(calendarId=CALENDAR_ID, body=event).execute()
-        return True
+        return True, None
     except Exception as e:
-        st.error(f"구글 캘린더 연동 실패: {e}")
-        return False
+        return False, str(e)
 
 # ---------------------------------------------------------
 # Custom CSS (음수 마진 적용 최적화)
@@ -246,8 +245,9 @@ def insert_task(task_date, start_time, end_time, title, memo, is_done, is_meetin
     updated_df = pd.concat([df, new_row], ignore_index=True)
     save_all_tasks(updated_df)
     
-    # ★ 구글 캘린더 실시간 연동 등록
-    add_google_calendar_event(task_date, start_time, end_time, title, memo)
+    # 구글 캘린더 실시간 연동 등록 및 결과 받기
+    success, err_msg = add_google_calendar_event(task_date, start_time, end_time, title, memo)
+    return success, err_msg
 
 def update_task_full(task_id, start_time, end_time, title, memo, is_meeting, meeting_notes):
     df = fetch_all_tasks()
@@ -394,7 +394,7 @@ def open_day_modal(target_date):
             if not title:
                 st.error("업무명을 입력해 주세요.")
             else:
-                insert_task(
+                success, err_msg = insert_task(
                     date_str,
                     start_t.strftime("%H:%M"),
                     end_t.strftime("%H:%M"),
@@ -404,7 +404,11 @@ def open_day_modal(target_date):
                     is_meeting,
                     meeting_notes
                 )
-                st.success("일정이 성공적으로 저장되었으며, 구글 캘린더에 연동되었습니다.")
+                if success:
+                    st.success("일정이 성공적으로 저장되었으며, 구글 캘린더에 연동되었습니다.")
+                else:
+                    st.warning("구글 시트에는 저장되었으나, 구글 캘린더 연동 중 오류가 발생했습니다.")
+                    st.error(f"⚠️ 구글 캘린더 오류 원인: {err_msg}")
                 st.rerun()
 
 # =================================-------------------------
