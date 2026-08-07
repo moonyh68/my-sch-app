@@ -80,7 +80,7 @@ def delete_google_calendar_event(event_id):
         return False, str(e)
 
 # ---------------------------------------------------------
-# Custom CSS (버튼 높이 최소화 적용)
+# Custom CSS (PC 일정 폰트 확대 & 모바일 시간 제외 간략화)
 # ---------------------------------------------------------
 st.markdown("""
     <style>
@@ -122,7 +122,7 @@ st.markdown("""
         border-left: 1px solid #E2E8F0 !important;
     }
 
-    /* ★ [핵심] 일자 날짜 버튼 높이 최소화 (min-height: 18px, padding: 0px) */
+    /* 일자 날짜 버튼 높이 최적화 */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button,
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button p,
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button div {
@@ -133,7 +133,7 @@ st.markdown("""
         min-height: 18px !important;
         height: 20px !important;
         line-height: 20px !important;
-        font-size: 13px !important;
+        font-size: 13.5px !important;
         font-weight: 700 !important;
         border-radius: 10px !important;
         box-shadow: none !important;
@@ -149,7 +149,7 @@ st.markdown("""
         color: #0284C7 !important;
     }
 
-    /* '오늘' 날짜 원형 하이라이트 (높이 최적화) */
+    /* '오늘' 날짜 원형 하이라이트 */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[kind="primary"],
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[kind="primary"] p {
         background-color: #0284C7 !important;
@@ -167,16 +167,16 @@ st.markdown("""
         margin-top: 1px !important;
     }
 
-    /* 연한 파스텔톤 일정 배경 카드 */
+    /* ★ [요구사항 ①] PC 화면: 일정내용 폰트를 한 폰트 크게 (11px -> 12px) 및 가독성 향상 */
     .task-item {
-        font-size: 11px !important;
-        font-weight: 400 !important;
+        font-size: 12px !important;               /* 한단계 확대 */
+        font-weight: 500 !important;               /* 글자 두께 선명화 */
         color: #0F172A !important;
-        line-height: 1.2 !important;
+        line-height: 1.3 !important;
         margin-bottom: 2px !important;
         white-space: normal !important;
         word-break: break-all !important;
-        padding: 1px 3px !important;
+        padding: 2px 4px !important;
         border-radius: 3px !important;
         background-color: #F0F9FF !important;
         border-left: 3px solid #38BDF8 !important;
@@ -195,7 +195,7 @@ st.markdown("""
         color: #92400E !important;
     }
 
-    /* 네비게이션 버튼 (이전달/다음달 높이 최적화) */
+    /* 네비게이션 버튼 (이전달/다음달) */
     div.stButton > button[key="btn_prev_month"], 
     div.stButton > button[key="btn_next_month"] {
         background-color: #F1F5F9 !important;
@@ -234,7 +234,7 @@ st.markdown("""
         text-align: center !important;
     }
 
-    /* 📱 [모바일 반응형 CSS] */
+    /* 📱 [요구사항 ②] 모바일 반응형 CSS: 일정 내용에서 시간을 제외한 간략 표현 */
     @media (max-width: 768px) {
         .block-container {
             padding-top: 1.0rem !important;
@@ -265,11 +265,16 @@ st.markdown("""
             padding: 0px !important;
         }
 
+        /* 모바일용 일정 박스 간략화 (시간 숨기기) */
         .task-item {
-            font-size: 9px !important;
-            line-height: 1.1 !important;
+            font-size: 9.5px !important;
+            line-height: 1.2 !important;
             margin-bottom: 1px !important;
-            padding: 1px 1px !important;
+            padding: 1px 2px !important;
+        }
+
+        .task-time {
+            display: none !important; /* 모바일에서 시간 숨김 처리 */
         }
     }
     </style>
@@ -295,9 +300,9 @@ def fetch_all_tasks():
                 
         df = df.astype(object)
         
-        # ID를 문자열 정규화 후 정수 변환 (빈값 처리)
+        # ID를 문자열 정규화 후 정수 변환
         df['id_clean'] = pd.to_numeric(df['id'], errors='coerce').fillna(-1).astype(int)
-        df = df[df['id_clean'] != -1].copy() # 정상적인 ID가 있는 행만 유지
+        df = df[df['id_clean'] != -1].copy()
         df['id'] = df['id_clean']
         df = df.drop(columns=['id_clean'])
         
@@ -619,7 +624,10 @@ for week in month_calendar:
                             css_class += " task-item-meeting"
                             icon = "📝"
                         
-                        task_items.append(f"<div class='{css_class}'>{icon} {t['start_time']} {str(t['title'])}</div>")
+                        # PC에서는 시간 표출, 모바일에서는 CSS(.task-time)로 시간 숨김
+                        time_html = f"<span class='task-time'>{t['start_time']} </span>"
+                        task_items.append(f"<div class='{css_class}'>{icon} {time_html}{str(t['title'])}</div>")
+                    
                     tasks_html = "".join(task_items)
                     st.markdown(f"<div class='task-container'>{tasks_html}</div>", unsafe_allow_html=True)
 
