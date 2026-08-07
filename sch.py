@@ -80,7 +80,7 @@ def delete_google_calendar_event(event_id):
         return False, str(e)
 
 # ---------------------------------------------------------
-# Custom CSS (알약 모양 Pill 버튼 디자인)
+# Custom CSS (그라데이션 & 그림자 Elevated 스타일 적용)
 # ---------------------------------------------------------
 st.markdown("""
     <style>
@@ -109,34 +109,40 @@ st.markdown("""
         margin-bottom: 0px !important;
     }
 
-    /* ★ 날짜 버튼 스타일 (알약 Pill 모양 적용) */
+    /* ★ 은은한 그라데이션 & 입체 그림자(Elevated) 날짜 버튼 */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button {
-        background-color: #F8FAFC !important;
+        background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%) !important;
         border: 1px solid #CBD5E1 !important;
         color: #1E293B !important;
         padding: 2px 2px !important;
         min-height: 28px !important;
         font-size: 13px !important;
         font-weight: 700 !important;
-        border-radius: 20px !important; /* 동그란 알약 스타일 */
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
-        transition: all 0.2s ease-in-out !important;
+        border-radius: 8px !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
         margin-bottom: 0px !important;
     }
 
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button:hover {
-        background-color: #E2E8F0 !important;
-        border-color: #64748B !important;
-        transform: translateY(-1px) !important;
+        background: linear-gradient(180deg, #FFFFFF 0%, #F1F5F9 100%) !important;
+        border-color: #94A3B8 !important;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06) !important;
+        transform: translateY(-1.5px) !important; /* 살짝 떠오르는 효과 */
     }
 
-    /* '오늘' 날짜 하이라이트 (알약형) */
+    /* '오늘' 날짜 하이라이트 (Elevated 그라데이션) */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[kind="primary"] {
         background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%) !important;
         border: none !important;
         color: #FFFFFF !important;
         font-weight: 800 !important;
-        border-radius: 20px !important;
+        box-shadow: 0 4px 10px rgba(2, 132, 199, 0.35) !important;
+    }
+
+    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[kind="primary"]:hover {
+        background: linear-gradient(135deg, #0369A1 0%, #075985 100%) !important;
+        box-shadow: 0 6px 14px rgba(2, 132, 199, 0.45) !important;
     }
 
     /* 일정 텍스트 컨테이너 */
@@ -144,7 +150,7 @@ st.markdown("""
         background-color: transparent !important;
         border: none !important;
         padding: 0px !important;
-        margin-top: 2px !important;
+        margin-top: 3px !important;
     }
 
     /* 연한 파스텔톤 일정 배경 카드 */
@@ -156,10 +162,11 @@ st.markdown("""
         margin-bottom: 2px !important;
         white-space: normal !important;
         word-break: break-all !important;
-        padding: 2px 4px !important;
-        border-radius: 6px !important;
+        padding: 2px 5px !important;
+        border-radius: 5px !important;
         background-color: #F0F9FF !important;
         border-left: 3px solid #38BDF8 !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
     }
 
     .task-item-done {
@@ -175,32 +182,42 @@ st.markdown("""
         color: #92400E !important;
     }
 
-    /* 네비게이션 버튼 (이전달/다음달 - 알약형) */
+    /* 네비게이션 버튼 (이전달/다음달 - Elevated 스타일) */
     div.stButton > button[key="btn_prev_month"], 
     div.stButton > button[key="btn_next_month"] {
-        background-color: #1E293B !important;
+        background: linear-gradient(180deg, #1E293B 0%, #0F172A 100%) !important;
         color: white !important;
         font-weight: 700 !important;
         font-size: 13px !important;
-        border-radius: 20px !important;
+        border-radius: 8px !important;
         padding: 5px 12px !important;
+        border: none !important;
+        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25) !important;
+        transition: all 0.2s ease-in-out !important;
+    }
+
+    div.stButton > button[key="btn_prev_month"]:hover, 
+    div.stButton > button[key="btn_next_month"]:hover {
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.35) !important;
     }
 
     div[data-testid="stFormSubmitButton"] > button {
-        background-color: #166534 !important;
+        background: linear-gradient(180deg, #166534 0%, #14532D 100%) !important;
         color: white !important;
         font-weight: bold !important;
         font-size: 15px !important;
-        border-radius: 20px !important;
+        border-radius: 8px !important;
+        box-shadow: 0 2px 6px rgba(22, 101, 52, 0.25) !important;
     }
 
     /* 하단 KPI 대시보드 카드 스타일 */
     .kpi-card {
-        background-color: #FFFFFF !important;
+        background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%) !important;
         border: 1px solid #E2E8F0 !important;
-        border-radius: 12px !important;
+        border-radius: 10px !important;
         padding: 10px 12px !important;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.04) !important;
         text-align: center !important;
     }
 
@@ -229,7 +246,6 @@ st.markdown("""
             font-weight: 700 !important;
             min-height: 25px !important;
             padding: 1px 0px !important;
-            border-radius: 12px !important;
         }
 
         .task-item {
