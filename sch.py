@@ -526,7 +526,16 @@ def open_day_modal(target_date):
     st.markdown(f"### `{date_str}` 일정 관리{holiday_text}", unsafe_allow_html=True)
 
     all_df = fetch_all_tasks()
-    tasks_df = all_df[all_df['task_date'] == date_str].sort_values(by="start_time") if not all_df.empty else pd.DataFrame()
+    
+    if not all_df.empty:
+        tasks_df = all_df[all_df['task_date'] == date_str].copy()
+        if not tasks_df.empty:
+            tasks_df['sort_time'] = tasks_df['start_time'].apply(
+                lambda x: f"{int(x.split(':')[0]):02d}:{int(x.split(':')[1]):02d}" if ':' in str(x) else str(x)
+            )
+            tasks_df = tasks_df.sort_values(by="sort_time")
+    else:
+        tasks_df = pd.DataFrame()
 
     if not tasks_df.empty:
         st.markdown("**📋 등록된 일정 및 수정**")
@@ -673,7 +682,7 @@ if st.session_state.get("cal_status") == "error":
     st.error(f"⚠️ **동기화 오류**: {st.session_state.get('cal_msg')}")
 
 # =================================-------------------------
-# [2단] 월간 달력 영역 (시작 시간순 정렬 적용)
+# [2단] 월간 달력 영역 (시간 포맷 2자리 자릿수 보정 후 정렬)
 # =================================-------------------------
 days_of_week = [("일", "#EF4444"), ("월", "#334155"), ("화", "#334155"), ("수", "#334155"), ("목", "#334155"), ("금", "#334155"), ("토", "#2563EB")]
 
@@ -696,9 +705,14 @@ for week in month_calendar:
                 curr_date = datetime.date(year, month, day)
                 date_str = curr_date.strftime("%Y-%m-%d")
 
-                # ★ [핵심] 해당 일자의 일정을 추출한 뒤 start_time 오름차순으로 정렬
+                # ★ [핵심 보정] "8:00" -> "08:00" 자릿수 정규화 후 시간순 정확 정렬
                 if not month_df.empty:
-                    day_tasks = month_df[month_df['task_date'] == date_str].sort_values(by="start_time")
+                    day_tasks = month_df[month_df['task_date'] == date_str].copy()
+                    if not day_tasks.empty:
+                        day_tasks['sort_time'] = day_tasks['start_time'].apply(
+                            lambda x: f"{int(x.split(':')[0]):02d}:{int(x.split(':')[1]):02d}" if ':' in str(x) else str(x)
+                        )
+                        day_tasks = day_tasks.sort_values(by="sort_time")
                 else:
                     day_tasks = pd.DataFrame()
                     
