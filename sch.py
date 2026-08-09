@@ -673,7 +673,7 @@ if st.session_state.get("cal_status") == "error":
     st.error(f"⚠️ **동기화 오류**: {st.session_state.get('cal_msg')}")
 
 # =================================-------------------------
-# [2단] 월간 달력 영역 (Markdown Inline Color 문법 적용)
+# [2단] 월간 달력 영역 (토요일 파란색 :blue[...] 추가)
 # =================================-------------------------
 days_of_week = [("일", "#EF4444"), ("월", "#334155"), ("화", "#334155"), ("수", "#334155"), ("목", "#334155"), ("금", "#334155"), ("토", "#2563EB")]
 
@@ -704,14 +704,17 @@ for week in month_calendar:
 
                 holiday_name = kr_holidays.get(date_str, "")
                 is_holiday = bool(holiday_name) or (day_idx == 0)
+                is_saturday = (day_idx == 6)
 
-                # ★ [핵심 해결] Streamlit Markdown Inline Color 문법으로 텍스트 색상 직접 렌더링
                 display_label = f"{day}일"
                 if day_total > 0:
                     display_label += f" [{day_total}]"
 
+                # ★ [핵심] 일요일/공휴일은 빨간색, 토요일은 파란색 직접 할당
                 if is_holiday and not is_today:
                     btn_label = f":red[{display_label}]"
+                elif is_saturday and not is_today:
+                    btn_label = f":blue[{display_label}]"
                 else:
                     btn_label = display_label
 
