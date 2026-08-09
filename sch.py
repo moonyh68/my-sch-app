@@ -135,7 +135,7 @@ def delete_google_calendar_event(event_id):
         return False, str(e)
 
 # ---------------------------------------------------------
-# Custom CSS
+# Custom CSS (버튼 색상 오버라이딩 최적화)
 # ---------------------------------------------------------
 st.markdown("""
     <style>
@@ -164,7 +164,7 @@ st.markdown("""
         margin-bottom: 0px !important;
     }
 
-    /* 달력 각 일자별 열(Column) 구분 세로선 및 가로선 경계 스타일 */
+    /* 달력 각 일자별 열 구분 세로선 및 가로선 경계 */
     div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
         border-right: 1px solid #E2E8F0 !important; 
         border-bottom: 1px solid #E2E8F0 !important; 
@@ -172,18 +172,14 @@ st.markdown("""
         min-height: 80px !important;
     }
 
-    /* 첫 번째 열(일요일) 왼쪽 세로 테두리 추가 */
     div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:first-child {
         border-left: 1px solid #E2E8F0 !important;
     }
 
-    /* 기본 일자 날짜 버튼 글씨체 */
-    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button,
-    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button p,
-    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button div {
+    /* 기본 평일 날짜 버튼 글씨체 */
+    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button {
         background-color: transparent !important;
         border: none !important;
-        color: #475569 !important;
         padding: 0px 2px !important;
         min-height: 18px !important;
         height: 20px !important;
@@ -198,20 +194,33 @@ st.markdown("""
         -webkit-font-smoothing: antialiased !important;
     }
 
+    /* 평일 글자색 설정 */
+    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button,
+    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button * {
+        color: #475569;
+    }
+
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button:hover,
-    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button:hover p {
+    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button:hover * {
         background-color: #F1F5F9 !important;
         color: #0284C7 !important;
     }
 
-    /* '오늘' 날짜 원형 하이라이트 */
+    /* '오늘' 날짜 하이라이트 */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[kind="primary"],
-    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[kind="primary"] p {
+    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[kind="primary"] * {
         background-color: #0284C7 !important;
         border: none !important;
         color: #FFFFFF !important;
         font-weight: 800 !important;
         border-radius: 10px !important;
+    }
+
+    /* ★ [핵심] 공휴일/일요일 날짜 강제 빨간색 오버라이딩 클래스 */
+    .holiday-btn > button,
+    .holiday-btn > button * {
+        color: #EF4444 !important;
+        font-weight: 800 !important;
     }
 
     /* 일정 텍스트 컨테이너 */
@@ -222,7 +231,7 @@ st.markdown("""
         margin-top: 1px !important;
     }
 
-    /* PC 화면: 일정내용 폰트 12px */
+    /* PC 화면 일정 폰트 */
     .task-item {
         font-size: 12px !important;
         font-weight: 500 !important;
@@ -250,7 +259,7 @@ st.markdown("""
         color: #92400E !important;
     }
 
-    /* ★ [요구사항] 공휴일명 배지/배경 박스 없이 깔끔한 빨간색 텍스트만 표시 */
+    /* 공휴일명 붉은 텍스트 */
     .holiday-text-only {
         font-size: 11.5px !important;
         font-weight: 800 !important;
@@ -261,7 +270,7 @@ st.markdown("""
         display: block !important;
     }
 
-    /* 네비게이션 버튼 (이전달/다음달) */
+    /* 네비게이션 버튼 */
     div.stButton > button[key="btn_prev_month"], 
     div.stButton > button[key="btn_next_month"] {
         background-color: #F1F5F9 !important;
@@ -290,7 +299,6 @@ st.markdown("""
         border-radius: 6px !important;
     }
 
-    /* 하단 KPI 대시보드 카드 스타일 */
     .kpi-card {
         background-color: #FFFFFF !important;
         border: 1px solid #E2E8F0 !important;
@@ -300,7 +308,7 @@ st.markdown("""
         text-align: center !important;
     }
 
-    /* 📱 모바일 반응형 CSS: 시간 제외 */
+    /* 📱 모바일 반응형 CSS */
     @media (max-width: 768px) {
         .block-container {
             padding-top: 1.0rem !important;
@@ -321,8 +329,7 @@ st.markdown("""
             min-height: 60px !important;
         }
 
-        div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button,
-        div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button p {
+        div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button {
             font-size: 10.5px !important;
             font-weight: 700 !important;
             min-height: 16px !important;
@@ -356,7 +363,6 @@ st.markdown("""
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 def fetch_all_tasks():
-    """Google Sheets 전체 데이터 안전 읽기"""
     try:
         df = conn.read(ttl=0)
         expected_cols = ['id', 'task_date', 'start_time', 'end_time', 'title', 'memo', 'is_done', 'is_meeting', 'meeting_notes', 'event_id']
@@ -387,7 +393,6 @@ def fetch_all_tasks():
         return pd.DataFrame(columns=['id', 'task_date', 'start_time', 'end_time', 'title', 'memo', 'is_done', 'is_meeting', 'meeting_notes', 'event_id'])
 
 def save_all_tasks(df):
-    """인덱스 재정렬 후 안전하게 Google Sheets 업데이트"""
     clean_df = df.reset_index(drop=True)
     conn.update(data=clean_df)
 
@@ -399,7 +404,6 @@ def fetch_month_tasks(year, month):
     return df[df['task_date'].str.startswith(prefix)]
 
 def insert_task(task_date, start_time, end_time, title, memo, is_done, is_meeting, meeting_notes):
-    """단일 날짜 일정 저장"""
     df = fetch_all_tasks()
     
     if not df.empty and len(df['id']) > 0:
@@ -427,7 +431,6 @@ def insert_task(task_date, start_time, end_time, title, memo, is_done, is_meetin
     return cal_success, cal_err
 
 def insert_task_range(start_date, end_date, start_time, end_time, title, memo, is_done, is_meeting, meeting_notes):
-    """연속 기간(시작일~종료일) 일괄 생성 로직"""
     current_d = start_date
     last_err = None
     all_success = True
@@ -443,7 +446,6 @@ def insert_task_range(start_date, end_date, start_time, end_time, title, memo, i
     return all_success, last_err
 
 def update_task_full(target_id, task_date, start_time, end_time, title, memo, is_meeting, meeting_notes):
-    """단일 일정 수정 로직 - ID 문자열 정규화 비교"""
     df = fetch_all_tasks()
     if df.empty:
         return True, None
@@ -475,7 +477,6 @@ def update_task_full(target_id, task_date, start_time, end_time, title, memo, is
     return True, None
 
 def update_task_done(target_id, is_done):
-    """완료 상태 단일 업데이트"""
     df = fetch_all_tasks()
     if df.empty:
         return
@@ -491,7 +492,6 @@ def update_task_done(target_id, is_done):
         save_all_tasks(df)
 
 def delete_task(target_id):
-    """지정한 단 1개의 ID만 안전 삭제"""
     df = fetch_all_tasks()
     if df.empty:
         return True, None
@@ -688,7 +688,7 @@ if st.session_state.get("cal_status") == "error":
     st.error(f"⚠️ **동기화 오류**: {st.session_state.get('cal_msg')}")
 
 # =================================-------------------------
-# [2단] 월간 달력 영역 (공휴일/일요일 날짜 버튼 붉은색 강제 적용)
+# [2단] 월간 달력 영역 (공휴일/일요일 날짜 버튼 오버라이딩 적용)
 # =================================-------------------------
 days_of_week = [("일", "#EF4444"), ("월", "#334155"), ("화", "#334155"), ("수", "#334155"), ("목", "#334155"), ("금", "#334155"), ("토", "#2563EB")]
 
@@ -724,24 +724,17 @@ for week in month_calendar:
                 holiday_name = kr_holidays.get(date_str, "")
                 is_holiday = bool(holiday_name) or (day_idx == 0)
 
-                # ★ [핵심] 버튼 고유 Key에 해당하는 CSS를 동적으로 직접 생성하여 빨간색 강제 지정
+                # ★ [핵심] holiday-btn 컨테이너 감싸기로 빨간색 글씨 100% 강제 적용
                 if is_holiday and not is_today:
-                    st.markdown(f"""
-                        <style>
-                        div.stButton > button[key="btn_day_{day}"] {{
-                            color: #EF4444 !important;
-                        }}
-                        div.stButton > button[key="btn_day_{day}"] * {{
-                            color: #EF4444 !important;
-                            font-weight: 800 !important;
-                        }}
-                        </style>
-                    """, unsafe_allow_html=True)
+                    st.markdown("<div class='holiday-btn'>", unsafe_allow_html=True)
+                    if st.button(btn_label, key=f"btn_day_{day}", type=btn_type, use_container_width=True):
+                        open_day_modal(curr_date)
+                    st.markdown("</div>", unsafe_allow_html=True)
+                else:
+                    if st.button(btn_label, key=f"btn_day_{day}", type=btn_type, use_container_width=True):
+                        open_day_modal(curr_date)
 
-                if st.button(btn_label, key=f"btn_day_{day}", type=btn_type, use_container_width=True):
-                    open_day_modal(curr_date)
-
-                # ★ [핵심] 공휴일명 배지/배경 박스 없이 붉은 글씨만 깔끔하게 노출
+                # 공휴일명 배지 없이 깔끔한 붉은 텍스트 노출
                 task_items = []
                 if holiday_name:
                     task_items.append(f"<div class='holiday-text-only'>{holiday_name}</div>")
