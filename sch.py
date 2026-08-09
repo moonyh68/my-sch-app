@@ -25,7 +25,6 @@ def get_kr_holidays(year):
         f"{year}-12-25": "성탄절",
     }
     
-    # 주요 연도별 설날/추석/부처님오신날 및 대체공휴일 DB (2024~2030)
     lunar_and_sub_holidays = {
         2024: {
             "2024-02-09": "설날 연휴", "2024-02-10": "설날", "2024-02-11": "설날 연휴", "2024-02-12": "대체공휴일",
@@ -178,7 +177,7 @@ st.markdown("""
         border-left: 1px solid #E2E8F0 !important;
     }
 
-    /* 일자 날짜 버튼 높이 최적화 */
+    /* 기본 일자 날짜 버튼 글씨체 */
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button,
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button p,
     div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button div {
@@ -251,6 +250,19 @@ st.markdown("""
         color: #92400E !important;
     }
 
+    /* ★ [요구사항 ③] 일정 칸 내부 상단 공휴일 표시 전용 카드 스타일 */
+    .holiday-task-item {
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        color: #EF4444 !important;
+        background-color: #FEF2F2 !important;
+        border-left: 3px solid #EF4444 !important;
+        padding: 1px 4px !important;
+        border-radius: 3px !important;
+        margin-bottom: 2px !important;
+        line-height: 1.2 !important;
+    }
+
     /* 네비게이션 버튼 (이전달/다음달) */
     div.stButton > button[key="btn_prev_month"], 
     div.stButton > button[key="btn_next_month"] {
@@ -278,15 +290,6 @@ st.markdown("""
         font-size: 14px !important;
         min-height: 32px !important;
         border-radius: 6px !important;
-    }
-
-    /* 공휴일 표시 라벨 스타일 */
-    .holiday-label {
-        font-size: 10px !important;
-        font-weight: 700 !important;
-        color: #EF4444 !important;
-        margin-bottom: 2px !important;
-        display: block !important;
     }
 
     /* 하단 KPI 대시보드 카드 스타일 */
@@ -334,6 +337,11 @@ st.markdown("""
             font-size: 9.5px !important;
             line-height: 1.2 !important;
             margin-bottom: 1px !important;
+            padding: 1px 2px !important;
+        }
+
+        .holiday-task-item {
+            font-size: 9px !important;
             padding: 1px 2px !important;
         }
 
@@ -682,7 +690,7 @@ if st.session_state.get("cal_status") == "error":
     st.error(f"⚠️ **동기화 오류**: {st.session_state.get('cal_msg')}")
 
 # =================================-------------------------
-# [2단] 월간 달력 영역 (공휴일 자동 인지 적용)
+# [2단] 월간 달력 영역 (공휴일 붉은색 강조 & 일정 칸 내부 표출)
 # =================================-------------------------
 days_of_week = [("일", "#EF4444"), ("월", "#334155"), ("화", "#334155"), ("수", "#334155"), ("목", "#334155"), ("금", "#334155"), ("토", "#2563EB")]
 
@@ -715,18 +723,19 @@ for week in month_calendar:
                 is_today = (curr_date == today)
                 btn_type = "primary" if is_today else "secondary"
 
-                # ★ 공휴일 및 일요일 날짜 색상 제어
+                # ★ [핵심] 공휴일/일요일 날짜 버튼 텍스트 빨간색 CSS 강제 적용
                 holiday_name = kr_holidays.get(date_str, "")
                 is_holiday = bool(holiday_name) or (day_idx == 0)
-
-                if holiday_name:
-                    st.markdown(f"<span class='holiday-label'>{holiday_name}</span>", unsafe_allow_html=True)
 
                 if is_holiday and not is_today:
                     st.markdown(f"""
                         <style>
-                        div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[key="btn_day_{day}"] p {{
+                        div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[key="btn_day_{day}"],
+                        div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[key="btn_day_{day}"] p,
+                        div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[key="btn_day_{day}"] div,
+                        div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[key="btn_day_{day}"] span {{
                             color: #EF4444 !important;
+                            font-weight: 800 !important;
                         }}
                         </style>
                     """, unsafe_allow_html=True)
@@ -734,8 +743,12 @@ for week in month_calendar:
                 if st.button(btn_label, key=f"btn_day_{day}", type=btn_type, use_container_width=True):
                     open_day_modal(curr_date)
 
+                # ★ [핵심] 일정 칸 내부 상단에 공휴일명 표출 및 기존 일정들 구성
+                task_items = []
+                if holiday_name:
+                    task_items.append(f"<div class='holiday-task-item'>🔴 {holiday_name}</div>")
+
                 if day_total > 0:
-                    task_items = []
                     for _, t in day_tasks.iterrows():
                         css_class = "task-item"
                         icon = "📌"
@@ -749,6 +762,7 @@ for week in month_calendar:
                         time_html = f"<span class='task-time'>{t['start_time']} </span>"
                         task_items.append(f"<div class='{css_class}'>{icon} {time_html}{str(t['title'])}</div>")
                     
+                if task_items:
                     tasks_html = "".join(task_items)
                     st.markdown(f"<div class='task-container'>{tasks_html}</div>", unsafe_allow_html=True)
 
