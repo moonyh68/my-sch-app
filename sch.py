@@ -10,7 +10,7 @@ from googleapiclient.discovery import build
 st.set_page_config(page_title="월간 일정표", layout="wide", page_icon="📅")
 
 # ---------------------------------------------------------
-# 구글 캘린더 연동 설정
+# 구글 캘린더 연동 설정 (자정 넘는 일정 자동 날짜 보정)
 # ---------------------------------------------------------
 CALENDAR_ID = "moonyh68@gmail.com"
 
@@ -27,14 +27,18 @@ def add_google_calendar_event(date_str, start_time_str, end_time_str, title, mem
     """구글 캘린더 신규 일정 등록"""
     try:
         service = get_calendar_service()
-        start_datetime = f"{date_str}T{start_time_str}:00"
-        end_datetime = f"{date_str}T{end_time_str}:00"
+        
+        start_dt = datetime.datetime.strptime(f"{date_str} {start_time_str}", "%Y-%m-%d %H:%M")
+        end_dt = datetime.datetime.strptime(f"{date_str} {end_time_str}", "%Y-%m-%d %H:%M")
+        
+        if end_dt <= start_dt:
+            end_dt += datetime.timedelta(days=1)
 
         event = {
             'summary': title,
             'description': memo if memo else '',
-            'start': {'dateTime': start_datetime, 'timeZone': 'Asia/Seoul'},
-            'end': {'dateTime': end_datetime, 'timeZone': 'Asia/Seoul'},
+            'start': {'dateTime': start_dt.strftime("%Y-%m-%dT%H:%M:00"), 'timeZone': 'Asia/Seoul'},
+            'end': {'dateTime': end_dt.strftime("%Y-%m-%dT%H:%M:00"), 'timeZone': 'Asia/Seoul'},
         }
 
         created_event = service.events().insert(calendarId=CALENDAR_ID, body=event).execute()
@@ -46,14 +50,18 @@ def update_google_calendar_event(event_id, date_str, start_time_str, end_time_st
     """구글 캘린더 일정 수정"""
     try:
         service = get_calendar_service()
-        start_datetime = f"{date_str}T{start_time_str}:00"
-        end_datetime = f"{date_str}T{end_time_str}:00"
+        
+        start_dt = datetime.datetime.strptime(f"{date_str} {start_time_str}", "%Y-%m-%d %H:%M")
+        end_dt = datetime.datetime.strptime(f"{date_str} {end_time_str}", "%Y-%m-%d %H:%M")
+        
+        if end_dt <= start_dt:
+            end_dt += datetime.timedelta(days=1)
 
         event = {
             'summary': title,
             'description': memo if memo else '',
-            'start': {'dateTime': start_datetime, 'timeZone': 'Asia/Seoul'},
-            'end': {'dateTime': end_datetime, 'timeZone': 'Asia/Seoul'},
+            'start': {'dateTime': start_dt.strftime("%Y-%m-%dT%H:%M:00"), 'timeZone': 'Asia/Seoul'},
+            'end': {'dateTime': end_dt.strftime("%Y-%m-%dT%H:%M:00"), 'timeZone': 'Asia/Seoul'},
         }
 
         if event_id and not pd.isna(event_id) and str(event_id).strip() != "":
@@ -80,7 +88,7 @@ def delete_google_calendar_event(event_id):
         return False, str(e)
 
 # ---------------------------------------------------------
-# Custom CSS (PC 일정 폰트 확대 & 모바일 시간 제외 간략화)
+# Custom CSS
 # ---------------------------------------------------------
 st.markdown("""
     <style>
@@ -167,10 +175,10 @@ st.markdown("""
         margin-top: 1px !important;
     }
 
-    /* ★ [요구사항 ①] PC 화면: 일정내용 폰트를 한 폰트 크게 (11px -> 12px) 및 가독성 향상 */
+    /* PC 화면: 일정내용 폰트 12px */
     .task-item {
-        font-size: 12px !important;               /* 한단계 확대 */
-        font-weight: 500 !important;               /* 글자 두께 선명화 */
+        font-size: 12px !important;
+        font-weight: 500 !important;
         color: #0F172A !important;
         line-height: 1.3 !important;
         margin-bottom: 2px !important;
@@ -234,7 +242,7 @@ st.markdown("""
         text-align: center !important;
     }
 
-    /* 📱 [요구사항 ②] 모바일 반응형 CSS: 일정 내용에서 시간을 제외한 간략 표현 */
+    /* 📱 모바일 반응형 CSS: 시간 제외 */
     @media (max-width: 768px) {
         .block-container {
             padding-top: 1.0rem !important;
@@ -265,7 +273,6 @@ st.markdown("""
             padding: 0px !important;
         }
 
-        /* 모바일용 일정 박스 간략화 (시간 숨기기) */
         .task-item {
             font-size: 9.5px !important;
             line-height: 1.2 !important;
@@ -274,14 +281,14 @@ st.markdown("""
         }
 
         .task-time {
-            display: none !important; /* 모바일에서 시간 숨김 처리 */
+            display: none !important;
         }
     }
     </style>
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 1. 구글 시트 데이터베이스 연동 함수 (안전성 강화)
+# 1. 구글 시트 데이터베이스 연동 함수
 # ---------------------------------------------------------
 conn = st.connection("gsheets", type=GSheetsConnection)
 
@@ -300,7 +307,6 @@ def fetch_all_tasks():
                 
         df = df.astype(object)
         
-        # ID를 문자열 정규화 후 정수 변환
         df['id_clean'] = pd.to_numeric(df['id'], errors='coerce').fillna(-1).astype(int)
         df = df[df['id_clean'] != -1].copy()
         df['id'] = df['id_clean']
@@ -330,7 +336,7 @@ def fetch_month_tasks(year, month):
     return df[df['task_date'].str.startswith(prefix)]
 
 def insert_task(task_date, start_time, end_time, title, memo, is_done, is_meeting, meeting_notes):
-    """신규 일정 저장"""
+    """단일 날짜 일정 저장"""
     df = fetch_all_tasks()
     
     if not df.empty and len(df['id']) > 0:
@@ -356,6 +362,22 @@ def insert_task(task_date, start_time, end_time, title, memo, is_done, is_meetin
     updated_df = pd.concat([df, new_row], ignore_index=True)
     save_all_tasks(updated_df)
     return cal_success, cal_err
+
+def insert_task_range(start_date, end_date, start_time, end_time, title, memo, is_done, is_meeting, meeting_notes):
+    """★ [신규] 연속 기간(시작일~종료일) 일괄 생성 로직"""
+    current_d = start_date
+    last_err = None
+    all_success = True
+
+    while current_d <= end_date:
+        date_str = current_d.strftime("%Y-%m-%d")
+        succ, err = insert_task(date_str, start_time, end_time, title, memo, is_done, is_meeting, meeting_notes)
+        if not succ:
+            all_success = False
+            last_err = err
+        current_d += datetime.timedelta(days=1)
+
+    return all_success, last_err
 
 def update_task_full(target_id, task_date, start_time, end_time, title, memo, is_meeting, meeting_notes):
     """단일 일정 수정 로직 - ID 문자열 정규화 비교"""
@@ -442,7 +464,7 @@ year = st.session_state.current_year
 month = st.session_state.current_month
 
 # ---------------------------------------------------------
-# 3. 팝업 모달 다이얼로그
+# 3. 팝업 모달 다이얼로그 (연속 기간 등록 옵션 추가)
 # ---------------------------------------------------------
 @st.dialog("📅 일자별 상세 일정 및 회의록", width="large")
 def open_day_modal(target_date):
@@ -527,7 +549,20 @@ def open_day_modal(target_date):
         st.divider()
 
     st.markdown("**➕ 새 일정 추가**")
+    
+    # ★ 등록 유형 선택 (단일 날짜 vs 연속 기간)
+    entry_mode = st.radio("등록 방식", ["단일 일자", "연속 기간(여러 날)"], horizontal=True, key="entry_mode_radio")
+    
     with st.form("add_task_form", clear_on_submit=False):
+        if entry_mode == "연속 기간(여러 날)":
+            selected_range = st.date_input(
+                "기간 선택 (시작일 ~ 종료일)",
+                value=(target_date, target_date + datetime.timedelta(days=2)),
+                key="add_date_range"
+            )
+        else:
+            selected_range = None
+
         col1, col2 = st.columns(2)
         with col1:
             start_t = st.time_input("시작 시간", datetime.time(9, 0))
@@ -547,16 +582,26 @@ def open_day_modal(target_date):
             if not title:
                 st.error("업무명을 입력해 주세요.")
             else:
-                success, err_msg = insert_task(
-                    date_str,
-                    start_t.strftime("%H:%M"),
-                    end_t.strftime("%H:%M"),
-                    title,
-                    memo,
-                    False,
-                    is_meeting,
-                    meeting_notes
-                )
+                if entry_mode == "연속 기간(여러 날)":
+                    if isinstance(selected_range, tuple) and len(selected_range) == 2:
+                        s_d, e_d = selected_range
+                        success, err_msg = insert_task_range(
+                            s_d, e_d,
+                            start_t.strftime("%H:%M"),
+                            end_t.strftime("%H:%M"),
+                            title, memo, False, is_meeting, meeting_notes
+                        )
+                    else:
+                        st.error("시작일과 종료일을 모두 선택해 주세요.")
+                        success = True
+                else:
+                    success, err_msg = insert_task(
+                        date_str,
+                        start_t.strftime("%H:%M"),
+                        end_t.strftime("%H:%M"),
+                        title, memo, False, is_meeting, meeting_notes
+                    )
+
                 if not success:
                     st.session_state["cal_status"] = "error"
                     st.session_state["cal_msg"] = f"구글 캘린더 등록 실패: {err_msg}"
@@ -624,7 +669,6 @@ for week in month_calendar:
                             css_class += " task-item-meeting"
                             icon = "📝"
                         
-                        # PC에서는 시간 표출, 모바일에서는 CSS(.task-time)로 시간 숨김
                         time_html = f"<span class='task-time'>{t['start_time']} </span>"
                         task_items.append(f"<div class='{css_class}'>{icon} {time_html}{str(t['title'])}</div>")
                     
