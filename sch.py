@@ -135,7 +135,7 @@ def delete_google_calendar_event(event_id):
         return False, str(e)
 
 # ---------------------------------------------------------
-# Custom CSS (선택자 우선순위 대폭 강화)
+# Custom CSS
 # ---------------------------------------------------------
 st.markdown("""
     <style>
@@ -176,8 +176,8 @@ st.markdown("""
         border-left: 1px solid #E2E8F0 !important;
     }
 
-    /* 기본 일자 버튼 통합 스타일 */
-    div[data-testid="stColumn"] div.stButton > button {
+    /* 날짜 버튼 커스텀 스타일 */
+    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button {
         background-color: transparent !important;
         border: none !important;
         padding: 0px 2px !important;
@@ -194,36 +194,18 @@ st.markdown("""
         -webkit-font-smoothing: antialiased !important;
     }
 
-    /* 평일 글자색 기본 지정 */
-    div[data-testid="stColumn"] div.stButton > button p,
-    div[data-testid="stColumn"] div.stButton > button span,
-    div[data-testid="stColumn"] div.stButton > button div {
-        color: #475569 !important;
-    }
-
-    div[data-testid="stColumn"] div.stButton > button:hover p,
-    div[data-testid="stColumn"] div.stButton > button:hover span {
+    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button:hover {
         background-color: #F1F5F9 !important;
-        color: #0284C7 !important;
     }
 
     /* '오늘' 날짜 하이라이트 */
-    div[data-testid="stColumn"] div.stButton > button[kind="primary"] p,
-    div[data-testid="stColumn"] div.stButton > button[kind="primary"] span {
+    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[kind="primary"],
+    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[kind="primary"] * {
         background-color: #0284C7 !important;
         border: none !important;
         color: #FFFFFF !important;
         font-weight: 800 !important;
         border-radius: 10px !important;
-    }
-
-    /* ★ [핵심 해결법] 선택자 연결 깊이를 최대로 높인 공휴일/일요일 버튼 빨간색 오버라이딩 규칙 */
-    html body div[data-testid="stColumn"] div.holiday-btn div.stButton > button,
-    html body div[data-testid="stColumn"] div.holiday-btn div.stButton > button p,
-    html body div[data-testid="stColumn"] div.holiday-btn div.stButton > button span,
-    html body div[data-testid="stColumn"] div.holiday-btn div.stButton > button div {
-        color: #EF4444 !important;
-        font-weight: 800 !important;
     }
 
     /* 일정 텍스트 컨테이너 */
@@ -691,7 +673,7 @@ if st.session_state.get("cal_status") == "error":
     st.error(f"⚠️ **동기화 오류**: {st.session_state.get('cal_msg')}")
 
 # =================================-------------------------
-# [2단] 월간 달력 영역 (HTML body 기반 고중첩 CSS 오버라이딩)
+# [2단] 월간 달력 영역 (Markdown Inline Color 문법 적용)
 # =================================-------------------------
 days_of_week = [("일", "#EF4444"), ("월", "#334155"), ("화", "#334155"), ("수", "#334155"), ("목", "#334155"), ("금", "#334155"), ("토", "#2563EB")]
 
@@ -717,27 +699,26 @@ for week in month_calendar:
                 day_tasks = month_df[month_df['task_date'] == date_str] if not month_df.empty else pd.DataFrame()
                 day_total = len(day_tasks)
 
-                btn_label = f"{day}일"
-                if day_total > 0:
-                    btn_label += f" [{day_total}]"
-
                 is_today = (curr_date == today)
                 btn_type = "primary" if is_today else "secondary"
 
                 holiday_name = kr_holidays.get(date_str, "")
                 is_holiday = bool(holiday_name) or (day_idx == 0)
 
-                # ★ [핵심] holiday-btn 래퍼 Div로 감싼 후 고중첩 CSS로 빨간색 강제 주입
-                if is_holiday and not is_today:
-                    st.markdown("<div class='holiday-btn'>", unsafe_allow_html=True)
-                    if st.button(btn_label, key=f"btn_day_{day}", type=btn_type, use_container_width=True):
-                        open_day_modal(curr_date)
-                    st.markdown("</div>", unsafe_allow_html=True)
-                else:
-                    if st.button(btn_label, key=f"btn_day_{day}", type=btn_type, use_container_width=True):
-                        open_day_modal(curr_date)
+                # ★ [핵심 해결] Streamlit Markdown Inline Color 문법으로 텍스트 색상 직접 렌더링
+                display_label = f"{day}일"
+                if day_total > 0:
+                    display_label += f" [{day_total}]"
 
-                # 공휴일명 빨간 텍스트 표현
+                if is_holiday and not is_today:
+                    btn_label = f":red[{display_label}]"
+                else:
+                    btn_label = display_label
+
+                if st.button(btn_label, key=f"btn_day_{day}", type=btn_type, use_container_width=True):
+                    open_day_modal(curr_date)
+
+                # 공휴일명 붉은 텍스트 표현
                 task_items = []
                 if holiday_name:
                     task_items.append(f"<div class='holiday-text-only'>{holiday_name}</div>")
