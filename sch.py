@@ -10,7 +10,55 @@ from googleapiclient.discovery import build
 st.set_page_config(page_title="월간 일정표", layout="wide", page_icon="📅")
 
 # ---------------------------------------------------------
-# 구글 캘린더 연동 설정 (자정 넘는 일정 자동 날짜 보정)
+# 대한민국 주요 공휴일 및 대체공휴일 자동 계산 함수
+# ---------------------------------------------------------
+def get_kr_holidays(year):
+    """지정한 연도의 대한민국 주요 양력/음력/대체 공휴일 계산 dictionary 반환"""
+    holidays = {
+        f"{year}-01-01": "신정",
+        f"{year}-03-01": "삼일절",
+        f"{year}-05-05": "어린이날",
+        f"{year}-06-06": "현충일",
+        f"{year}-08-15": "광복절",
+        f"{year}-10-03": "개천절",
+        f"{year}-10-09": "한글날",
+        f"{year}-12-25": "성탄절",
+    }
+    
+    # 주요 연도별 설날/추석/부처님오신날 및 대체공휴일 DB (2024~2030)
+    lunar_and_sub_holidays = {
+        2024: {
+            "2024-02-09": "설날 연휴", "2024-02-10": "설날", "2024-02-11": "설날 연휴", "2024-02-12": "대체공휴일",
+            "2024-05-06": "대체공휴일", "2024-05-15": "부처님오신날",
+            "2024-09-16": "추석 연휴", "2024-09-17": "추석", "2024-09-18": "추석 연휴"
+        },
+        2025: {
+            "2025-01-28": "설날 연휴", "2025-01-29": "설날", "2025-01-30": "설날 연휴", "2025-03-03": "대체공휴일",
+            "2025-05-05": "부처님오신날/어린이날", "2025-05-06": "대체공휴일",
+            "2025-10-05": "추석 연휴", "2025-10-06": "추석", "2025-10-07": "추석 연휴", "2025-10-08": "대체공휴일"
+        },
+        2026: {
+            "2026-02-16": "설날 연휴", "2026-02-17": "설날", "2026-02-18": "설날 연휴",
+            "2026-05-24": "부처님오신날", "2026-05-25": "대체공휴일",
+            "2026-08-17": "대체공휴일",
+            "2026-09-24": "추석 연휴", "2026-09-25": "추석", "2026-09-26": "추석 연휴", "2026-09-28": "대체공휴일",
+            "2026-10-05": "대체공휴일"
+        },
+        2027: {
+            "2027-02-06": "설날 연휴", "2027-02-07": "설날", "2027-02-08": "설날 연휴", "2027-02-09": "대체공휴일",
+            "2027-05-13": "부처님오신날",
+            "2027-09-14": "추석 연휴", "2027-09-15": "추석", "2027-09-16": "추석 연휴",
+            "2027-10-04": "대체공휴일", "2027-10-10": "대체공휴일"
+        }
+    }
+    
+    if year in lunar_and_sub_holidays:
+        holidays.update(lunar_and_sub_holidays[year])
+        
+    return holidays
+
+# ---------------------------------------------------------
+# 구글 캘린더 연동 설정
 # ---------------------------------------------------------
 CALENDAR_ID = "moonyh68@gmail.com"
 
@@ -232,6 +280,15 @@ st.markdown("""
         border-radius: 6px !important;
     }
 
+    /* 공휴일 표시 라벨 스타일 */
+    .holiday-label {
+        font-size: 10px !important;
+        font-weight: 700 !important;
+        color: #EF4444 !important;
+        margin-bottom: 2px !important;
+        display: block !important;
+    }
+
     /* 하단 KPI 대시보드 카드 스타일 */
     .kpi-card {
         background-color: #FFFFFF !important;
@@ -364,7 +421,7 @@ def insert_task(task_date, start_time, end_time, title, memo, is_done, is_meetin
     return cal_success, cal_err
 
 def insert_task_range(start_date, end_date, start_time, end_time, title, memo, is_done, is_meeting, meeting_notes):
-    """★ [신규] 연속 기간(시작일~종료일) 일괄 생성 로직"""
+    """연속 기간(시작일~종료일) 일괄 생성 로직"""
     current_d = start_date
     last_err = None
     all_success = True
@@ -463,13 +520,19 @@ if "current_month" not in st.session_state:
 year = st.session_state.current_year
 month = st.session_state.current_month
 
+# 현재 연도 공휴일 DB 로드
+kr_holidays = get_kr_holidays(year)
+
 # ---------------------------------------------------------
-# 3. 팝업 모달 다이얼로그 (연속 기간 등록 옵션 추가)
+# 3. 팝업 모달 다이얼로그
 # ---------------------------------------------------------
 @st.dialog("📅 일자별 상세 일정 및 회의록", width="large")
 def open_day_modal(target_date):
     date_str = target_date.strftime("%Y-%m-%d")
-    st.markdown(f"### `{date_str}` 일정 관리")
+    holiday_name = kr_holidays.get(date_str, "")
+    holiday_text = f" <span style='color: #EF4444; font-size: 16px;'>[{holiday_name}]</span>" if holiday_name else ""
+    
+    st.markdown(f"### `{date_str}` 일정 관리{holiday_text}", unsafe_allow_html=True)
 
     all_df = fetch_all_tasks()
     tasks_df = all_df[all_df['task_date'] == date_str].sort_values(by="start_time") if not all_df.empty else pd.DataFrame()
@@ -549,8 +612,6 @@ def open_day_modal(target_date):
         st.divider()
 
     st.markdown("**➕ 새 일정 추가**")
-    
-    # ★ 등록 유형 선택 (단일 날짜 vs 연속 기간)
     entry_mode = st.radio("등록 방식", ["단일 일자", "연속 기간(여러 날)"], horizontal=True, key="entry_mode_radio")
     
     with st.form("add_task_form", clear_on_submit=False):
@@ -621,7 +682,7 @@ if st.session_state.get("cal_status") == "error":
     st.error(f"⚠️ **동기화 오류**: {st.session_state.get('cal_msg')}")
 
 # =================================-------------------------
-# [2단] 월간 달력 영역
+# [2단] 월간 달력 영역 (공휴일 자동 인지 적용)
 # =================================-------------------------
 days_of_week = [("일", "#EF4444"), ("월", "#334155"), ("화", "#334155"), ("수", "#334155"), ("목", "#334155"), ("금", "#334155"), ("토", "#2563EB")]
 
@@ -653,6 +714,22 @@ for week in month_calendar:
 
                 is_today = (curr_date == today)
                 btn_type = "primary" if is_today else "secondary"
+
+                # ★ 공휴일 및 일요일 날짜 색상 제어
+                holiday_name = kr_holidays.get(date_str, "")
+                is_holiday = bool(holiday_name) or (day_idx == 0)
+
+                if holiday_name:
+                    st.markdown(f"<span class='holiday-label'>{holiday_name}</span>", unsafe_allow_html=True)
+
+                if is_holiday and not is_today:
+                    st.markdown(f"""
+                        <style>
+                        div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[key="btn_day_{day}"] p {{
+                            color: #EF4444 !important;
+                        }}
+                        </style>
+                    """, unsafe_allow_html=True)
 
                 if st.button(btn_label, key=f"btn_day_{day}", type=btn_type, use_container_width=True):
                     open_day_modal(curr_date)
