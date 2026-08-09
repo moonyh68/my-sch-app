@@ -673,7 +673,7 @@ if st.session_state.get("cal_status") == "error":
     st.error(f"⚠️ **동기화 오류**: {st.session_state.get('cal_msg')}")
 
 # =================================-------------------------
-# [2단] 월간 달력 영역 (토요일 파란색 :blue[...] 추가)
+# [2단] 월간 달력 영역 (시작 시간순 정렬 적용)
 # =================================-------------------------
 days_of_week = [("일", "#EF4444"), ("월", "#334155"), ("화", "#334155"), ("수", "#334155"), ("목", "#334155"), ("금", "#334155"), ("토", "#2563EB")]
 
@@ -696,7 +696,12 @@ for week in month_calendar:
                 curr_date = datetime.date(year, month, day)
                 date_str = curr_date.strftime("%Y-%m-%d")
 
-                day_tasks = month_df[month_df['task_date'] == date_str] if not month_df.empty else pd.DataFrame()
+                # ★ [핵심] 해당 일자의 일정을 추출한 뒤 start_time 오름차순으로 정렬
+                if not month_df.empty:
+                    day_tasks = month_df[month_df['task_date'] == date_str].sort_values(by="start_time")
+                else:
+                    day_tasks = pd.DataFrame()
+                    
                 day_total = len(day_tasks)
 
                 is_today = (curr_date == today)
@@ -710,7 +715,6 @@ for week in month_calendar:
                 if day_total > 0:
                     display_label += f" [{day_total}]"
 
-                # ★ [핵심] 일요일/공휴일은 빨간색, 토요일은 파란색 직접 할당
                 if is_holiday and not is_today:
                     btn_label = f":red[{display_label}]"
                 elif is_saturday and not is_today:
