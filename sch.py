@@ -250,17 +250,15 @@ st.markdown("""
         color: #92400E !important;
     }
 
-    /* ★ [요구사항 ③] 일정 칸 내부 상단 공휴일 표시 전용 카드 스타일 */
-    .holiday-task-item {
-        font-size: 11px !important;
-        font-weight: 700 !important;
+    /* ★ [요구사항] 공휴일명 배지/배경 박스 없이 깔끔한 빨간색 텍스트만 표시 */
+    .holiday-text-only {
+        font-size: 11.5px !important;
+        font-weight: 800 !important;
         color: #EF4444 !important;
-        background-color: #FEF2F2 !important;
-        border-left: 3px solid #EF4444 !important;
-        padding: 1px 4px !important;
-        border-radius: 3px !important;
+        padding: 1px 2px !important;
         margin-bottom: 2px !important;
         line-height: 1.2 !important;
+        display: block !important;
     }
 
     /* 네비게이션 버튼 (이전달/다음달) */
@@ -340,9 +338,9 @@ st.markdown("""
             padding: 1px 2px !important;
         }
 
-        .holiday-task-item {
-            font-size: 9px !important;
-            padding: 1px 2px !important;
+        .holiday-text-only {
+            font-size: 9.5px !important;
+            padding: 1px 1px !important;
         }
 
         .task-time {
@@ -690,7 +688,7 @@ if st.session_state.get("cal_status") == "error":
     st.error(f"⚠️ **동기화 오류**: {st.session_state.get('cal_msg')}")
 
 # =================================-------------------------
-# [2단] 월간 달력 영역 (공휴일 붉은색 강조 & 일정 칸 내부 표출)
+# [2단] 월간 달력 영역 (공휴일/일요일 날짜 버튼 붉은색 강제 적용)
 # =================================-------------------------
 days_of_week = [("일", "#EF4444"), ("월", "#334155"), ("화", "#334155"), ("수", "#334155"), ("목", "#334155"), ("금", "#334155"), ("토", "#2563EB")]
 
@@ -723,17 +721,17 @@ for week in month_calendar:
                 is_today = (curr_date == today)
                 btn_type = "primary" if is_today else "secondary"
 
-                # ★ [핵심] 공휴일/일요일 날짜 버튼 텍스트 빨간색 CSS 강제 적용
                 holiday_name = kr_holidays.get(date_str, "")
                 is_holiday = bool(holiday_name) or (day_idx == 0)
 
+                # ★ [핵심] 버튼 고유 Key에 해당하는 CSS를 동적으로 직접 생성하여 빨간색 강제 지정
                 if is_holiday and not is_today:
                     st.markdown(f"""
                         <style>
-                        div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[key="btn_day_{day}"],
-                        div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[key="btn_day_{day}"] p,
-                        div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[key="btn_day_{day}"] div,
-                        div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[key="btn_day_{day}"] span {{
+                        div.stButton > button[key="btn_day_{day}"] {{
+                            color: #EF4444 !important;
+                        }}
+                        div.stButton > button[key="btn_day_{day}"] * {{
                             color: #EF4444 !important;
                             font-weight: 800 !important;
                         }}
@@ -743,10 +741,10 @@ for week in month_calendar:
                 if st.button(btn_label, key=f"btn_day_{day}", type=btn_type, use_container_width=True):
                     open_day_modal(curr_date)
 
-                # ★ [핵심] 일정 칸 내부 상단에 공휴일명 표출 및 기존 일정들 구성
+                # ★ [핵심] 공휴일명 배지/배경 박스 없이 붉은 글씨만 깔끔하게 노출
                 task_items = []
                 if holiday_name:
-                    task_items.append(f"<div class='holiday-task-item'>🔴 {holiday_name}</div>")
+                    task_items.append(f"<div class='holiday-text-only'>{holiday_name}</div>")
 
                 if day_total > 0:
                     for _, t in day_tasks.iterrows():
