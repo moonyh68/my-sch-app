@@ -353,12 +353,14 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 시간 오름차순 정렬 안전 보정 함수 (★ 핵심 예외 처리)
+# 시간 오름차순 정렬 안전 보정 함수
 # ---------------------------------------------------------
 def format_sort_time(time_str):
-    """빈 값이나 잘못된 형식에도 에러가 발생하지 않도록 2자리 정규화 정렬 문자열 반환"""
+    """빈 값이나 예외적인 형식에도 에러 없이 정렬 가능한 문자열 반환"""
     try:
         s = str(time_str).strip()
+        if not s or s.lower() == 'nan':
+            return "00:00"
         if ':' in s:
             parts = s.split(':')
             h = int(parts[0]) if parts[0].isdigit() else 0
@@ -716,4 +718,175 @@ for idx, (day_name, color_code) in enumerate(days_of_week):
 
 month_df = fetch_month_tasks(year, month)
 
-calendar.setfirstweekday(
+calendar.setfirstweekday(calendar.SUNDAY)
+month_calendar = calendar.monthcalendar(year, month)
+
+for week in month_calendar:
+    week_cols = st.columns(7)
+    for day_idx, day in enumerate(week):
+        with week_cols[day_idx]:
+            if day == 0:
+                st.write("")
+            else:
+                curr_date = datetime.date(year, month, day)
+                date_str = curr_date.strftime("%Y-%m-%d")
+
+                # 안전한 시간순 정렬
+                if not month_df.empty:
+                    day_tasks = month_df[month_df['task_date'] == date_str].copy()
+                    if not day_tasks.empty:
+                        day_tasks['sort_time'] = day_tasks['start_time'].apply(format_sort_time)
+                        day_tasks = day_tasks.sort_values(by="sort_time")
+                else:
+                    day_tasks = pd.DataFrame()
+                    
+                day_total = len(day_tasks)
+
+                is_today = (curr_date == today)
+                btn_type = "primary" if is_today else "secondary"
+
+                holiday_name = kr_holidays.get(date_str, "")
+                is_holiday = bool(holiday_name) or (day_idx == 0)
+                is_saturday = (day_idx == 6)
+
+                display_label = f"{day}일"
+                if day_total > 0:
+                    display_label += f" [{day_total}]"
+
+                if is_holiday and not is_today:
+                    btn_label = f":red[{display_label}]"
+                elif is_saturday and not is_today:
+                    btn_label = f":blue[{display_label}]"
+                else:
+                    btn_label = display_label
+
+                if st.button(btn_label, key=f"btn_day_{day}", type=btn_type, use_container_width=True):
+                    open_day_modal(curr_date)
+
+                # 공휴일명 붉은 텍스트 표현
+                task_items = []
+                if holiday_name:
+                    task_items.append(f"<div class='holiday-text-only'>{holiday_name}</div>")
+
+                if day_total > 0:
+                    for _, t in day_tasks.iterrows():
+                        css_class = "task-item"
+                        icon = "📌"
+                        if t['is_done']:
+                            css_class += " task-item-done"
+                            icon = "✅"
+                        elif t['is_meeting']:
+                            css_class += " task-item-meeting"
+                            icon = "📝"
+                        
+                        time_html = f"<span class='task-time'>{t['start_time']} </span>"
+                        task_items.append(f"<div class='{css_class}'>{icon} {time_html}{str(t['title'])}</div>")
+                    
+                if task_items:
+                    tasks_html = "".join(task_items)
+                    st.markdown(f"<div class='task-container'>{tasks_html}</div>", unsafe_allow_html=True)
+
+st.divider()
+
+# =================================-------------------------
+# [3단] 이전달 / 일정 검색 / 다음달
+# =================================-------------------------
+col_nav1, col_nav2, col_nav3 = st.columns([1, 2.5, 1])
+
+with col_nav1:
+    if st.button("◀ 이전달", key="btn_prev_month", use_container_width=True):
+        if month == 1:
+            st.session_state.current_month = 12
+            st.session_state.current_year -= 1
+        else:
+            st.session_state.current_month -= 1
+        st.rerun()
+
+with col_nav2:
+    with st.expander("🔍 **일정 검색**", expanded=False):
+        search_query = st.text_input("검색어 입력", placeholder="업무명/회의록 키워드", label_visibility="collapsed")
+        if search_query:
+            all_data = fetch_all_tasks()
+            if not all_data.empty:
+                search_df = all_data[
+                    all_data['title'].astype(str).str.contains(search_query, case=False, na=False) |
+                    all_data['memo'].astype(str).str.contains(search_query, case=False, na=False) |
+                    all_data['meeting_notes'].astype(str).str.contains(search_query, case=False, na=False)
+                ].sort_values(by="task_date", ascending=False)
+            else:
+                search_df = pd.DataFrame()
+
+            if not search_df.empty:
+                st.success(f"총 {len(search_df)}건 검색되었습니다.")
+                for _, s_row in search_df.iterrows():
+                    status_icon = "✅ 완료" if s_row['is_done'] else "⏳ 진행중"
+                    meeting_icon = " [📝 회의]" if s_row['is_meeting'] else ""
+                    st.write(f"• **{s_row['task_date']}** | **[{status_icon}]** {s_row['title']}{meeting_icon}")
+                    if pd.notna(s_row['memo']) and s_row['memo']:
+                        st.caption(f"  - 메모: {s_row['memo']}")
+                    if s_row['is_meeting'] and pd.notna(s_row['meeting_notes']) and s_row['meeting_notes']:
+                        st.caption(f"  - 회의록: {s_row['meeting_notes']}")
+            else:
+                st.warning("검색 결과가 없습니다.")
+
+with col_nav3:
+    if st.button("다음달 ▶", key="btn_next_month", use_container_width=True):
+        if month == 12:
+            st.session_state.current_month = 1
+            st.session_state.current_year += 1
+        else:
+            st.session_state.current_month += 1
+        st.rerun()
+
+st.divider()
+
+# =================================-------------------------
+# [4단] 카드형 대시보드 요약 (수치 계산 예외 처리 완비)
+# =================================-------------------------
+total_tasks = len(month_df) if not month_df.empty else 0
+
+try:
+    done_tasks = len(month_df[month_df['is_done'].astype(str) == '1']) if total_tasks > 0 else 0
+except Exception:
+    done_tasks = 0
+
+try:
+    meeting_tasks = len(month_df[month_df['is_meeting'].astype(str) == '1']) if total_tasks > 0 else 0
+except Exception:
+    meeting_tasks = 0
+
+completion_rate = round((done_tasks / total_tasks * 100), 1) if total_tasks > 0 else 0.0
+
+kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+
+with kpi1:
+    st.markdown(f"""
+        <div class="kpi-card">
+            <p style="font-size: 12px; font-weight: 700; color: #64748B; margin-bottom: 2px;">월간 총 업무</p>
+            <h3 style="font-size: 20px; font-weight: 800; color: #1E3A8A; margin: 0;">{total_tasks}건</h3>
+        </div>
+    """, unsafe_allow_html=True)
+
+with kpi2:
+    st.markdown(f"""
+        <div class="kpi-card">
+            <p style="font-size: 12px; font-weight: 700; color: #64748B; margin-bottom: 2px;">완료된 업무</p>
+            <h3 style="font-size: 20px; font-weight: 800; color: #166534; margin: 0;">{done_tasks}건</h3>
+        </div>
+    """, unsafe_allow_html=True)
+
+with kpi3:
+    st.markdown(f"""
+        <div class="kpi-card">
+            <p style="font-size: 12px; font-weight: 700; color: #64748B; margin-bottom: 2px;">총 회의 건수</p>
+            <h3 style="font-size: 20px; font-weight: 800; color: #D97706; margin: 0;">{meeting_tasks}건</h3>
+        </div>
+    """, unsafe_allow_html=True)
+
+with kpi4:
+    st.markdown(f"""
+        <div class="kpi-card">
+            <p style="font-size: 12px; font-weight: 700; color: #64748B; margin-bottom: 2px;">이행률 (완료율)</p>
+            <h3 style="font-size: 20px; font-weight: 800; color: #7C3AED; margin: 0;">{completion_rate}%</h3>
+        </div>
+    """, unsafe_allow_html=True)
