@@ -135,7 +135,7 @@ def delete_google_calendar_event(event_id):
         return False, str(e)
 
 # ---------------------------------------------------------
-# Custom CSS (방안 1: max-height 및 overflow-y 적용)
+# Custom CSS
 # ---------------------------------------------------------
 st.markdown("""
     <style>
@@ -208,7 +208,7 @@ st.markdown("""
         border-radius: 10px !important;
     }
 
-    /* ★ [방안 1 핵심] 일정 텍스트 컨테이너 스크롤바 활성화 */
+    /* 일정 텍스트 컨테이너 */
     .task-container {
         background-color: transparent !important;
         border: none !important;
@@ -218,7 +218,6 @@ st.markdown("""
         overflow-y: auto !important;
     }
 
-    /* 스크롤바 디자인 미세 조정 (얇고 깔끔하게) */
     .task-container::-webkit-scrollbar {
         width: 3px;
     }
@@ -287,4 +286,434 @@ st.markdown("""
     }
 
     div[data-testid="stFormSubmitButton"] > button {
-        background-color: #16
+        background-color: #166534 !important;
+        color: white !important;
+        font-weight: bold !important;
+        font-size: 14px !important;
+        min-height: 32px !important;
+        border-radius: 6px !important;
+    }
+
+    .kpi-card {
+        background-color: #FFFFFF !important;
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 8px !important;
+        padding: 6px 10px !important;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.02) !important;
+        text-align: center !important;
+    }
+
+    /* 📱 모바일 반응형 CSS */
+    @media (max-width: 768px) {
+        .block-container {
+            padding-top: 1.0rem !important;
+        }
+
+        div[data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            gap: 0px !important;
+        }
+
+        div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
+            width: 14.28% !important;
+            min-width: 0px !important;
+            flex: 1 1 14.28% !important;
+            padding: 1px 1px !important;
+            min-height: 60px !important;
+        }
+
+        div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button {
+            font-size: 10.5px !important;
+            font-weight: 700 !important;
+            min-height: 16px !important;
+            height: 18px !important;
+            line-height: 18px !important;
+            padding: 0px !important;
+        }
+
+        .task-item {
+            font-size: 9.5px !important;
+            line-height: 1.2 !important;
+            margin-bottom: 1px !important;
+            padding: 1px 2px !important;
+        }
+
+        .holiday-text-only {
+            font-size: 9.5px !important;
+            padding: 1px 1px !important;
+        }
+
+        .task-time {
+            display: none !important;
+        }
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# ---------------------------------------------------------
+# 시간 오름차순 정렬 안전 보정 함수 (★ 핵심 예외 처리)
+# ---------------------------------------------------------
+def format_sort_time(time_str):
+    """빈 값이나 잘못된 형식에도 에러가 발생하지 않도록 2자리 정규화 정렬 문자열 반환"""
+    try:
+        s = str(time_str).strip()
+        if ':' in s:
+            parts = s.split(':')
+            h = int(parts[0]) if parts[0].isdigit() else 0
+            m = int(parts[1]) if parts[1].isdigit() else 0
+            return f"{h:02d}:{m:02d}"
+        return s
+    except Exception:
+        return "00:00"
+
+# ---------------------------------------------------------
+# 1. 구글 시트 데이터베이스 연동 함수
+# ---------------------------------------------------------
+conn = st.connection("gsheets", type=GSheetsConnection)
+
+def fetch_all_tasks():
+    try:
+        df = conn.read(ttl=0)
+        expected_cols = ['id', 'task_date', 'start_time', 'end_time', 'title', 'memo', 'is_done', 'is_meeting', 'meeting_notes', 'event_id']
+        
+        if df.empty:
+            return pd.DataFrame(columns=expected_cols)
+            
+        for col in expected_cols:
+            if col not in df.columns:
+                df[col] = ""
+                
+        df = df.astype(object)
+        
+        df['id_clean'] = pd.to_numeric(df['id'], errors='coerce').fillna(-1).astype(int)
+        df = df[df['id_clean'] != -1].copy()
+        df['id'] = df['id_clean']
+        df = df.drop(columns=['id_clean'])
+        
+        df['is_done'] = pd.to_numeric(df['is_done'], errors='coerce').fillna(0).astype(int)
+        df['is_meeting'] = pd.to_numeric(df['is_meeting'], errors='coerce').fillna(0).astype(int)
+        
+        str_cols = ['task_date', 'start_time', 'end_time', 'title', 'memo', 'meeting_notes', 'event_id']
+        for col in str_cols:
+            df[col] = df[col].fillna("").astype(str)
+            
+        return df.reset_index(drop=True)
+    except Exception as e:
+        return pd.DataFrame(columns=['id', 'task_date', 'start_time', 'end_time', 'title', 'memo', 'is_done', 'is_meeting', 'meeting_notes', 'event_id'])
+
+def save_all_tasks(df):
+    clean_df = df.reset_index(drop=True)
+    conn.update(data=clean_df)
+
+def fetch_month_tasks(year, month):
+    df = fetch_all_tasks()
+    if df.empty:
+        return df
+    prefix = f"{year}-{month:02d}"
+    return df[df['task_date'].str.startswith(prefix)]
+
+def insert_task(task_date, start_time, end_time, title, memo, is_done, is_meeting, meeting_notes):
+    df = fetch_all_tasks()
+    
+    if not df.empty and len(df['id']) > 0:
+        new_id = int(df['id'].max()) + 1
+    else:
+        new_id = 1
+    
+    cal_success, cal_event_id, cal_err = add_google_calendar_event(task_date, start_time, end_time, title, memo)
+    
+    new_row = pd.DataFrame([{
+        'id': int(new_id),
+        'task_date': str(task_date),
+        'start_time': str(start_time),
+        'end_time': str(end_time),
+        'title': str(title),
+        'memo': str(memo),
+        'is_done': int(is_done),
+        'is_meeting': int(is_meeting),
+        'meeting_notes': str(meeting_notes),
+        'event_id': str(cal_event_id) if cal_event_id else ""
+    }]).astype(object)
+    
+    updated_df = pd.concat([df, new_row], ignore_index=True)
+    save_all_tasks(updated_df)
+    return cal_success, cal_err
+
+def insert_task_range(start_date, end_date, start_time, end_time, title, memo, is_done, is_meeting, meeting_notes):
+    current_d = start_date
+    last_err = None
+    all_success = True
+
+    while current_d <= end_date:
+        date_str = current_d.strftime("%Y-%m-%d")
+        succ, err = insert_task(date_str, start_time, end_time, title, memo, is_done, is_meeting, meeting_notes)
+        if not succ:
+            all_success = False
+            last_err = err
+        current_d += datetime.timedelta(days=1)
+
+    return all_success, last_err
+
+def update_task_full(target_id, task_date, start_time, end_time, title, memo, is_meeting, meeting_notes):
+    df = fetch_all_tasks()
+    if df.empty:
+        return True, None
+
+    target_id_str = str(int(target_id))
+    df['id_str'] = df['id'].astype(str).str.strip()
+    
+    mask = (df['id_str'] == target_id_str)
+    if mask.any():
+        idx = df[mask].index[0]
+        old_event_id = str(df.loc[idx, 'event_id']) if 'event_id' in df.columns else ""
+        
+        cal_success, new_event_id, cal_err = update_google_calendar_event(old_event_id, task_date, start_time, end_time, title, memo)
+        
+        df.loc[idx, 'start_time'] = str(start_time)
+        df.loc[idx, 'end_time'] = str(end_time)
+        df.loc[idx, 'title'] = str(title)
+        df.loc[idx, 'memo'] = str(memo)
+        df.loc[idx, 'is_meeting'] = int(is_meeting)
+        df.loc[idx, 'meeting_notes'] = str(meeting_notes)
+        
+        if new_event_id:
+            df.loc[idx, 'event_id'] = str(new_event_id)
+            
+        df = df.drop(columns=['id_str'])
+        save_all_tasks(df)
+        return cal_success, cal_err
+        
+    return True, None
+
+def update_task_done(target_id, is_done):
+    df = fetch_all_tasks()
+    if df.empty:
+        return
+
+    target_id_str = str(int(target_id))
+    df['id_str'] = df['id'].astype(str).str.strip()
+    mask = (df['id_str'] == target_id_str)
+    
+    if mask.any():
+        idx = df[mask].index[0]
+        df.loc[idx, 'is_done'] = int(is_done)
+        df = df.drop(columns=['id_str'])
+        save_all_tasks(df)
+
+def delete_task(target_id):
+    df = fetch_all_tasks()
+    if df.empty:
+        return True, None
+
+    target_id_str = str(int(target_id))
+    df['id_str'] = df['id'].astype(str).str.strip()
+    
+    matched = df[df['id_str'] == target_id_str]
+    if not matched.empty:
+        idx = matched.index[0]
+        event_id = str(df.loc[idx, 'event_id']) if 'event_id' in df.columns else ""
+        
+        updated_df = df[df['id_str'] != target_id_str].copy()
+        updated_df = updated_df.drop(columns=['id_str'])
+        
+        save_all_tasks(updated_df)
+        
+        cal_success, cal_err = delete_google_calendar_event(event_id)
+        return cal_success, cal_err
+        
+    return True, None
+
+# ---------------------------------------------------------
+# 2. 세션 상태 초기화
+# ---------------------------------------------------------
+today = datetime.date.today()
+if "current_year" not in st.session_state:
+    st.session_state.current_year = today.year
+if "current_month" not in st.session_state:
+    st.session_state.current_month = today.month
+
+year = st.session_state.current_year
+month = st.session_state.current_month
+
+# 현재 연도 공휴일 DB 로드
+kr_holidays = get_kr_holidays(year)
+
+# ---------------------------------------------------------
+# 3. 팝업 모달 다이얼로그
+# ---------------------------------------------------------
+@st.dialog("📅 일자별 상세 일정 및 회의록", width="large")
+def open_day_modal(target_date):
+    date_str = target_date.strftime("%Y-%m-%d")
+    holiday_name = kr_holidays.get(date_str, "")
+    holiday_text = f" <span style='color: #EF4444; font-size: 16px;'>[{holiday_name}]</span>" if holiday_name else ""
+    
+    st.markdown(f"### `{date_str}` 일정 관리{holiday_text}", unsafe_allow_html=True)
+
+    all_df = fetch_all_tasks()
+    
+    if not all_df.empty:
+        tasks_df = all_df[all_df['task_date'] == date_str].copy()
+        if not tasks_df.empty:
+            tasks_df['sort_time'] = tasks_df['start_time'].apply(format_sort_time)
+            tasks_df = tasks_df.sort_values(by="sort_time")
+    else:
+        tasks_df = pd.DataFrame()
+
+    if not tasks_df.empty:
+        st.markdown("**📋 등록된 일정 및 수정**")
+        for _, row in tasks_df.iterrows():
+            row_id = int(row['id'])
+            status_text = "✅ 완료" if row['is_done'] else "⏳ 진행중"
+            
+            with st.expander(f"[{status_text}] {row['start_time']}~{row['end_time']} | {row['title']}", expanded=False):
+                st.markdown("**수정 항목 입력**")
+                
+                try:
+                    st_time_val = datetime.datetime.strptime(str(row['start_time']), "%H:%M").time()
+                except:
+                    st_time_val = datetime.time(9, 0)
+                try:
+                    et_time_val = datetime.datetime.strptime(str(row['end_time']), "%H:%M").time()
+                except:
+                    et_time_val = datetime.time(10, 0)
+
+                col_e1, col_e2 = st.columns(2)
+                with col_e1:
+                    edit_start = st.time_input("시작 시간", value=st_time_val, key=f"e_start_{row_id}")
+                with col_e2:
+                    edit_end = st.time_input("종료 시간", value=et_time_val, key=f"e_end_{row_id}")
+
+                edit_title = st.text_input("업무명 / 안건", value=row['title'], key=f"e_title_{row_id}")
+                edit_memo = st.text_input("메모", value=row['memo'] if pd.notna(row['memo']) else "", key=f"e_memo_{row_id}")
+                edit_is_meeting = st.checkbox("회의 여부", value=bool(row['is_meeting']), key=f"e_chk_mt_{row_id}")
+
+                edit_meeting_notes = ""
+                if edit_is_meeting:
+                    edit_meeting_notes = st.text_area("회의 내용 및 결정 사항", value=row['meeting_notes'] if pd.notna(row['meeting_notes']) else "", key=f"e_notes_{row_id}")
+
+                col_btn1, col_btn2, col_btn3 = st.columns([1.5, 1.5, 1])
+                
+                with col_btn1:
+                    if st.button("💾 수정 저장", key=f"save_btn_{row_id}", use_container_width=True):
+                        if not edit_title:
+                            st.error("업무명을 입력해 주세요.")
+                        else:
+                            success, err_msg = update_task_full(
+                                row_id,
+                                date_str,
+                                edit_start.strftime("%H:%M"),
+                                edit_end.strftime("%H:%M"),
+                                edit_title,
+                                edit_memo,
+                                edit_is_meeting,
+                                edit_meeting_notes
+                            )
+                            if not success:
+                                st.session_state["cal_status"] = "error"
+                                st.session_state["cal_msg"] = f"구글 캘린더 수정 실패: {err_msg}"
+                            else:
+                                st.session_state["cal_status"] = None
+                            st.rerun()
+
+                with col_btn2:
+                    chk_label = "✅ 완료" if row['is_done'] else "🟢 완료 처리"
+                    if st.button(f"{chk_label}", key=f"chk_btn_{row_id}", use_container_width=True):
+                        new_done = 0 if row['is_done'] else 1
+                        update_task_done(row_id, new_done)
+                        st.rerun()
+
+                with col_btn3:
+                    if st.button("🗑️ 삭제", key=f"del_btn_{row_id}", use_container_width=True):
+                        success, err_msg = delete_task(row_id)
+                        if not success:
+                            st.session_state["cal_status"] = "error"
+                            st.session_state["cal_msg"] = f"구글 캘린더 삭제 실패: {err_msg}"
+                        else:
+                            st.session_state["cal_status"] = None
+                        st.rerun()
+        st.divider()
+
+    st.markdown("**➕ 새 일정 추가**")
+    entry_mode = st.radio("등록 방식", ["단일 일자", "연속 기간(여러 날)"], horizontal=True, key="entry_mode_radio")
+    
+    with st.form("add_task_form", clear_on_submit=False):
+        if entry_mode == "연속 기간(여러 날)":
+            selected_range = st.date_input(
+                "기간 선택 (시작일 ~ 종료일)",
+                value=(target_date, target_date + datetime.timedelta(days=2)),
+                key="add_date_range"
+            )
+        else:
+            selected_range = None
+
+        col1, col2 = st.columns(2)
+        with col1:
+            start_t = st.time_input("시작 시간", datetime.time(9, 0))
+        with col2:
+            end_t = st.time_input("종료 시간", datetime.time(10, 0))
+
+        title = st.text_input("업무명 / 안건", placeholder="예: 주간 실적 점검")
+        memo = st.text_input("메모", placeholder="비고 및 주요 메모")
+
+        is_meeting = st.checkbox("회의 여부 (선택 시 회의록 입력란 활성화)")
+        meeting_notes = ""
+        if is_meeting:
+            meeting_notes = st.text_area("회의 내용 및 결정 사항", placeholder="회의 안건, 참석자, 결론 등을 입력하세요.")
+
+        submit = st.form_submit_button("💾 일정 저장", use_container_width=True)
+        if submit:
+            if not title:
+                st.error("업무명을 입력해 주세요.")
+            else:
+                if entry_mode == "연속 기간(여러 날)":
+                    if isinstance(selected_range, tuple) and len(selected_range) == 2:
+                        s_d, e_d = selected_range
+                        success, err_msg = insert_task_range(
+                            s_d, e_d,
+                            start_t.strftime("%H:%M"),
+                            end_t.strftime("%H:%M"),
+                            title, memo, False, is_meeting, meeting_notes
+                        )
+                    else:
+                        st.error("시작일과 종료일을 모두 선택해 주세요.")
+                        success = True
+                else:
+                    success, err_msg = insert_task(
+                        date_str,
+                        start_t.strftime("%H:%M"),
+                        end_t.strftime("%H:%M"),
+                        title, memo, False, is_meeting, meeting_notes
+                    )
+
+                if not success:
+                    st.session_state["cal_status"] = "error"
+                    st.session_state["cal_msg"] = f"구글 캘린더 등록 실패: {err_msg}"
+                else:
+                    st.session_state["cal_status"] = None
+                st.rerun()
+
+# =================================-------------------------
+# [1단] 최상단 년/월 표시 및 에러 상태 메시지 영역
+# =================================-------------------------
+st.markdown(
+    f"<h2 style='text-align: center; font-weight: 800; font-size: 24px; margin: 0 0 8px 0; padding: 0;'><span style='color: #1E3A8A;'>{year}년</span> <span style='color: #166534;'>{month}월</span></h2>",
+    unsafe_allow_html=True
+)
+
+if st.session_state.get("cal_status") == "error":
+    st.error(f"⚠️ **동기화 오류**: {st.session_state.get('cal_msg')}")
+
+# =================================-------------------------
+# [2단] 월간 달력 영역
+# =================================-------------------------
+days_of_week = [("일", "#EF4444"), ("월", "#334155"), ("화", "#334155"), ("수", "#334155"), ("목", "#334155"), ("금", "#334155"), ("토", "#2563EB")]
+
+cols = st.columns(7)
+for idx, (day_name, color_code) in enumerate(days_of_week):
+    cols[idx].markdown(f"<div style='text-align: center; color: {color_code}; font-weight: 800; font-size: 14px; padding: 2px 0; border: none; margin-bottom: 2px;'>{day_name}</div>", unsafe_allow_html=True)
+
+month_df = fetch_month_tasks(year, month)
+
+calendar.setfirstweekday(
