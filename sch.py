@@ -153,4 +153,134 @@ st.markdown("""
         border-left: 1px solid #E2E8F0 !important;
     }
 
-    div
+    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button {
+        background-color: transparent !important;
+        border: none !important;
+        padding: 0px 2px !important;
+        min-height: 18px !important;
+        height: 20px !important;
+        line-height: 20px !important;
+        font-size: 13.5px !important;
+        font-weight: 700 !important;
+        border-radius: 10px !important;
+        box-shadow: none !important;
+        transition: all 0.15s ease-in-out !important;
+        margin-bottom: 1px !important;
+        letter-spacing: normal !important;
+    }
+
+    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button:hover {
+        background-color: #F1F5F9 !important;
+    }
+
+    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[kind="primary"],
+    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[kind="primary"] * {
+        background-color: #0284C7 !important;
+        border: none !important;
+        color: #FFFFFF !important;
+        font-weight: 800 !important;
+        border-radius: 10px !important;
+    }
+
+    .task-container {
+        background-color: transparent !important;
+        border: none !important;
+        padding: 0px !important;
+        margin-top: 1px !important;
+        max-height: 120px !important;
+        overflow-y: auto !important;
+    }
+    .task-container::-webkit-scrollbar { width: 3px; }
+    .task-container::-webkit-scrollbar-thumb { background-color: #CBD5E1; border-radius: 3px; }
+
+    .task-item {
+        font-size: 12px !important;
+        font-weight: 500 !important;
+        color: #0F172A !important;
+        line-height: 1.3 !important;
+        margin-bottom: 2px !important;
+        white-space: normal !important;
+        word-break: break-all !important;
+        padding: 2px 4px !important;
+        border-radius: 3px !important;
+        background-color: #F0F9FF !important;
+        border-left: 3px solid #38BDF8 !important;
+    }
+    .task-item-done {
+        background-color: #DCFCE7 !important;
+        border-left: 3px solid #22C55E !important;
+        color: #166534 !important;
+        text-decoration: line-through !important;
+    }
+    .task-item-meeting {
+        background-color: #FEF3C7 !important;
+        border-left: 3px solid #F59E0B !important;
+        color: #92400E !important;
+    }
+
+    .holiday-text-only {
+        font-size: 11.5px !important;
+        font-weight: 800 !important;
+        color: #EF4444 !important;
+        padding: 1px 2px !important;
+        margin-bottom: 2px !important;
+        line-height: 1.2 !important;
+        display: block !important;
+    }
+
+    div.stButton > button[key="btn_prev_month"], 
+    div.stButton > button[key="btn_next_month"] {
+        background-color: #F1F5F9 !important;
+        border: 1px solid #CBD5E1 !important;
+        color: #334155 !important;
+        font-weight: 700 !important;
+        font-size: 12px !important;
+        min-height: 26px !important;
+        height: 28px !important;
+        border-radius: 14px !important;
+        padding: 2px 10px !important;
+    }
+
+    div[data-testid="stFormSubmitButton"] > button {
+        background-color: #166534 !important;
+        color: white !important;
+        font-weight: bold !important;
+        font-size: 14px !important;
+        min-height: 32px !important;
+        border-radius: 6px !important;
+    }
+
+    .kpi-card {
+        background-color: #FFFFFF !important;
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 8px !important;
+        padding: 6px 10px !important;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.02) !important;
+        text-align: center !important;
+    }
+
+    @media (max-width: 768px) {
+        .block-container { padding-top: 1.0rem !important; }
+        div[data-testid="stHorizontalBlock"] { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 0px !important; }
+        div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] { width: 14.28% !important; min-width: 0px !important; flex: 1 1 14.28% !important; padding: 1px 1px !important; min-height: 60px !important; }
+        div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button { font-size: 10.5px !important; font-weight: 700 !important; min-height: 16px !important; height: 18px !important; line-height: 18px !important; padding: 0px !important; }
+        .task-item { font-size: 9.5px !important; line-height: 1.2 !important; margin-bottom: 1px !important; padding: 1px 2px !important; }
+        .holiday-text-only { font-size: 9.5px !important; padding: 1px 1px !important; }
+        .task-time { display: none !important; }
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# ---------------------------------------------------------
+# 시간 오름차순 정렬 안전 보정 함수
+# ---------------------------------------------------------
+def format_sort_time(time_str):
+    try:
+        s = str(time_str).strip()
+        if not s or s.lower() == 'nan':
+            return "00:00"
+        if ':' in s:
+            parts = s.split(':')
+            h = int(parts[0]) if parts[0].isdigit() else 0
+            m = int(parts[1]) if parts[1].isdigit() else 0
+            return f"{
