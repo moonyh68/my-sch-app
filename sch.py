@@ -2,6 +2,7 @@ import streamlit as st
 import datetime
 import calendar
 import pandas as pd
+from zoneinfo import ZoneInfo
 from streamlit_gsheets import GSheetsConnection
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -473,6 +474,7 @@ def update_task_full(target_id, task_date, start_time, end_time, title, memo, is
         
         cal_success, new_event_id, cal_err = update_google_calendar_event(old_event_id, task_date, start_time, end_time, title, memo)
         
+        df.loc[idx, 'task_date'] = str(task_date)
         df.loc[idx, 'start_time'] = str(start_time)
         df.loc[idx, 'end_time'] = str(end_time)
         df.loc[idx, 'title'] = str(title)
@@ -528,9 +530,10 @@ def delete_task(target_id):
     return True, None
 
 # ---------------------------------------------------------
-# 2. 세션 상태 초기화
+# 2. 세션 상태 초기화 (한국 표준시 KST 보정)
 # ---------------------------------------------------------
-today = datetime.date.today()
+today = datetime.datetime.now(ZoneInfo("Asia/Seoul")).date()
+
 if "current_year" not in st.session_state:
     st.session_state.current_year = today.year
 if "current_month" not in st.session_state:
@@ -543,7 +546,7 @@ month = st.session_state.current_month
 kr_holidays = get_kr_holidays(year)
 
 # ---------------------------------------------------------
-# 3. 팝업 모달 다이얼로그
+# 3. 팝업 모달 다이얼로그 (★ 날짜 수정 항목 추가)
 # ---------------------------------------------------------
 @st.dialog("📅 일자별 상세 일정 및 회의록", width="large")
 def open_day_modal(target_date):
@@ -572,6 +575,12 @@ def open_day_modal(target_date):
             with st.expander(f"[{status_text}] {row['start_time']}~{row['end_time']} | {row['title']}", expanded=False):
                 st.markdown("**수정 항목 입력**")
                 
+                # 기존 등록된 날짜/시작시간/종료시간 파싱
+                try:
+                    row_date_val = datetime.datetime.strptime(str(row['task_date']), "%Y-%m-%d").date()
+                except:
+                    row_date_val = target_date
+
                 try:
                     st_time_val = datetime.datetime.strptime(str(row['start_time']), "%H:%M").time()
                 except:
@@ -580,6 +589,9 @@ def open_day_modal(target_date):
                     et_time_val = datetime.datetime.strptime(str(row['end_time']), "%H:%M").time()
                 except:
                     et_time_val = datetime.time(10, 0)
+
+                # ★ [날짜 수정 필드 추가]
+                edit_date = st.date_input("일정 날짜 변경", value=row_date_val, key=f"e_date_{row_id}")
 
                 col_e1, col_e2 = st.columns(2)
                 with col_e1:
@@ -604,7 +616,7 @@ def open_day_modal(target_date):
                         else:
                             success, err_msg = update_task_full(
                                 row_id,
-                                date_str,
+                                edit_date.strftime("%Y-%m-%d"),
                                 edit_start.strftime("%H:%M"),
                                 edit_end.strftime("%H:%M"),
                                 edit_title,
@@ -841,7 +853,7 @@ with col_nav3:
 st.divider()
 
 # =================================-------------------------
-# [4단] 카드형 대시보드 요약 (수치 계산 예외 처리 완비)
+# [4단] 카드형 대시보드 요약
 # =================================-------------------------
 total_tasks = len(month_df) if not month_df.empty else 0
 
