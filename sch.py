@@ -460,6 +460,7 @@ def insert_task_range(start_date, end_date, start_time, end_time, title, memo, i
     return all_success, last_err
 
 def update_task_full(target_id, task_date, start_time, end_time, title, memo, is_meeting, meeting_notes):
+    """단일 일정 수정"""
     df = fetch_all_tasks()
     if df.empty:
         return True, None
@@ -490,6 +491,13 @@ def update_task_full(target_id, task_date, start_time, end_time, title, memo, is
         return cal_success, cal_err
         
     return True, None
+
+def update_task_range(target_id, start_date, end_date, start_time, end_time, title, memo, is_meeting, meeting_notes):
+    """연속 기간으로 일정 일괄 수정 (기존 항목 삭제 후 해당 기간 재생성)"""
+    succ, err = delete_task(target_id)
+    if not succ:
+        return False, err
+    return insert_task_range(start_date, end_date, start_time, end_time, title, memo, 0, is_meeting, meeting_notes)
 
 def update_task_done(target_id, is_done):
     df = fetch_all_tasks()
@@ -546,7 +554,7 @@ month = st.session_state.current_month
 kr_holidays = get_kr_holidays(year)
 
 # ---------------------------------------------------------
-# 3. 팝업 모달 다이얼로그 (★ 날짜 수정 항목 추가)
+# 3. 팝업 모달 다이얼로그 (★ 단일일자/연속기간 수정 선택 기능 반영)
 # ---------------------------------------------------------
 @st.dialog("📅 일자별 상세 일정 및 회의록", width="large")
 def open_day_modal(target_date):
@@ -590,315 +598,18 @@ def open_day_modal(target_date):
                 except:
                     et_time_val = datetime.time(10, 0)
 
-                # ★ [날짜 수정 필드 추가]
-                edit_date = st.date_input("일정 날짜 변경", value=row_date_val, key=f"e_date_{row_id}")
+                # ★ [수정 모드 선택: 단일일자 vs 연속기간]
+                edit_mode = st.radio("날짜 수정 방식", ["단일 날짜 변경", "연속 기간으로 확장/변경"], horizontal=True, key=f"e_mode_{row_id}")
+
+                if edit_mode == "단일 날짜 변경":
+                    edit_date = st.date_input("일정 날짜 변경", value=row_date_val, key=f"e_date_{row_id}")
+                    edit_range = None
+                else:
+                    edit_date = None
+                    edit_range = st.date_input("기간 선택 (시작일 ~ 종료일)", value=(row_date_val, row_date_val + datetime.timedelta(days=2)), key=f"e_range_{row_id}")
 
                 col_e1, col_e2 = st.columns(2)
                 with col_e1:
                     edit_start = st.time_input("시작 시간", value=st_time_val, key=f"e_start_{row_id}")
                 with col_e2:
                     edit_end = st.time_input("종료 시간", value=et_time_val, key=f"e_end_{row_id}")
-
-                edit_title = st.text_input("업무명 / 안건", value=row['title'], key=f"e_title_{row_id}")
-                edit_memo = st.text_input("메모", value=row['memo'] if pd.notna(row['memo']) else "", key=f"e_memo_{row_id}")
-                edit_is_meeting = st.checkbox("회의 여부", value=bool(row['is_meeting']), key=f"e_chk_mt_{row_id}")
-
-                edit_meeting_notes = ""
-                if edit_is_meeting:
-                    edit_meeting_notes = st.text_area("회의 내용 및 결정 사항", value=row['meeting_notes'] if pd.notna(row['meeting_notes']) else "", key=f"e_notes_{row_id}")
-
-                col_btn1, col_btn2, col_btn3 = st.columns([1.5, 1.5, 1])
-                
-                with col_btn1:
-                    if st.button("💾 수정 저장", key=f"save_btn_{row_id}", use_container_width=True):
-                        if not edit_title:
-                            st.error("업무명을 입력해 주세요.")
-                        else:
-                            success, err_msg = update_task_full(
-                                row_id,
-                                edit_date.strftime("%Y-%m-%d"),
-                                edit_start.strftime("%H:%M"),
-                                edit_end.strftime("%H:%M"),
-                                edit_title,
-                                edit_memo,
-                                edit_is_meeting,
-                                edit_meeting_notes
-                            )
-                            if not success:
-                                st.session_state["cal_status"] = "error"
-                                st.session_state["cal_msg"] = f"구글 캘린더 수정 실패: {err_msg}"
-                            else:
-                                st.session_state["cal_status"] = None
-                            st.rerun()
-
-                with col_btn2:
-                    chk_label = "✅ 완료" if row['is_done'] else "🟢 완료 처리"
-                    if st.button(f"{chk_label}", key=f"chk_btn_{row_id}", use_container_width=True):
-                        new_done = 0 if row['is_done'] else 1
-                        update_task_done(row_id, new_done)
-                        st.rerun()
-
-                with col_btn3:
-                    if st.button("🗑️ 삭제", key=f"del_btn_{row_id}", use_container_width=True):
-                        success, err_msg = delete_task(row_id)
-                        if not success:
-                            st.session_state["cal_status"] = "error"
-                            st.session_state["cal_msg"] = f"구글 캘린더 삭제 실패: {err_msg}"
-                        else:
-                            st.session_state["cal_status"] = None
-                        st.rerun()
-        st.divider()
-
-    st.markdown("**➕ 새 일정 추가**")
-    entry_mode = st.radio("등록 방식", ["단일 일자", "연속 기간(여러 날)"], horizontal=True, key="entry_mode_radio")
-    
-    with st.form("add_task_form", clear_on_submit=False):
-        if entry_mode == "연속 기간(여러 날)":
-            selected_range = st.date_input(
-                "기간 선택 (시작일 ~ 종료일)",
-                value=(target_date, target_date + datetime.timedelta(days=2)),
-                key="add_date_range"
-            )
-        else:
-            selected_range = None
-
-        col1, col2 = st.columns(2)
-        with col1:
-            start_t = st.time_input("시작 시간", datetime.time(9, 0))
-        with col2:
-            end_t = st.time_input("종료 시간", datetime.time(10, 0))
-
-        title = st.text_input("업무명 / 안건", placeholder="예: 주간 실적 점검")
-        memo = st.text_input("메모", placeholder="비고 및 주요 메모")
-
-        is_meeting = st.checkbox("회의 여부 (선택 시 회의록 입력란 활성화)")
-        meeting_notes = ""
-        if is_meeting:
-            meeting_notes = st.text_area("회의 내용 및 결정 사항", placeholder="회의 안건, 참석자, 결론 등을 입력하세요.")
-
-        submit = st.form_submit_button("💾 일정 저장", use_container_width=True)
-        if submit:
-            if not title:
-                st.error("업무명을 입력해 주세요.")
-            else:
-                if entry_mode == "연속 기간(여러 날)":
-                    if isinstance(selected_range, tuple) and len(selected_range) == 2:
-                        s_d, e_d = selected_range
-                        success, err_msg = insert_task_range(
-                            s_d, e_d,
-                            start_t.strftime("%H:%M"),
-                            end_t.strftime("%H:%M"),
-                            title, memo, False, is_meeting, meeting_notes
-                        )
-                    else:
-                        st.error("시작일과 종료일을 모두 선택해 주세요.")
-                        success = True
-                else:
-                    success, err_msg = insert_task(
-                        date_str,
-                        start_t.strftime("%H:%M"),
-                        end_t.strftime("%H:%M"),
-                        title, memo, False, is_meeting, meeting_notes
-                    )
-
-                if not success:
-                    st.session_state["cal_status"] = "error"
-                    st.session_state["cal_msg"] = f"구글 캘린더 등록 실패: {err_msg}"
-                else:
-                    st.session_state["cal_status"] = None
-                st.rerun()
-
-# =================================-------------------------
-# [1단] 최상단 년/월 표시 및 에러 상태 메시지 영역
-# =================================-------------------------
-st.markdown(
-    f"<h2 style='text-align: center; font-weight: 800; font-size: 24px; margin: 0 0 8px 0; padding: 0;'><span style='color: #1E3A8A;'>{year}년</span> <span style='color: #166534;'>{month}월</span></h2>",
-    unsafe_allow_html=True
-)
-
-if st.session_state.get("cal_status") == "error":
-    st.error(f"⚠️ **동기화 오류**: {st.session_state.get('cal_msg')}")
-
-# =================================-------------------------
-# [2단] 월간 달력 영역
-# =================================-------------------------
-days_of_week = [("일", "#EF4444"), ("월", "#334155"), ("화", "#334155"), ("수", "#334155"), ("목", "#334155"), ("금", "#334155"), ("토", "#2563EB")]
-
-cols = st.columns(7)
-for idx, (day_name, color_code) in enumerate(days_of_week):
-    cols[idx].markdown(f"<div style='text-align: center; color: {color_code}; font-weight: 800; font-size: 14px; padding: 2px 0; border: none; margin-bottom: 2px;'>{day_name}</div>", unsafe_allow_html=True)
-
-month_df = fetch_month_tasks(year, month)
-
-calendar.setfirstweekday(calendar.SUNDAY)
-month_calendar = calendar.monthcalendar(year, month)
-
-for week in month_calendar:
-    week_cols = st.columns(7)
-    for day_idx, day in enumerate(week):
-        with week_cols[day_idx]:
-            if day == 0:
-                st.write("")
-            else:
-                curr_date = datetime.date(year, month, day)
-                date_str = curr_date.strftime("%Y-%m-%d")
-
-                # 안전한 시간순 정렬
-                if not month_df.empty:
-                    day_tasks = month_df[month_df['task_date'] == date_str].copy()
-                    if not day_tasks.empty:
-                        day_tasks['sort_time'] = day_tasks['start_time'].apply(format_sort_time)
-                        day_tasks = day_tasks.sort_values(by="sort_time")
-                else:
-                    day_tasks = pd.DataFrame()
-                    
-                day_total = len(day_tasks)
-
-                is_today = (curr_date == today)
-                btn_type = "primary" if is_today else "secondary"
-
-                holiday_name = kr_holidays.get(date_str, "")
-                is_holiday = bool(holiday_name) or (day_idx == 0)
-                is_saturday = (day_idx == 6)
-
-                display_label = f"{day}일"
-                if day_total > 0:
-                    display_label += f" [{day_total}]"
-
-                if is_holiday and not is_today:
-                    btn_label = f":red[{display_label}]"
-                elif is_saturday and not is_today:
-                    btn_label = f":blue[{display_label}]"
-                else:
-                    btn_label = display_label
-
-                if st.button(btn_label, key=f"btn_day_{day}", type=btn_type, use_container_width=True):
-                    open_day_modal(curr_date)
-
-                # 공휴일명 붉은 텍스트 표현
-                task_items = []
-                if holiday_name:
-                    task_items.append(f"<div class='holiday-text-only'>{holiday_name}</div>")
-
-                if day_total > 0:
-                    for _, t in day_tasks.iterrows():
-                        css_class = "task-item"
-                        icon = "📌"
-                        if t['is_done']:
-                            css_class += " task-item-done"
-                            icon = "✅"
-                        elif t['is_meeting']:
-                            css_class += " task-item-meeting"
-                            icon = "📝"
-                        
-                        time_html = f"<span class='task-time'>{t['start_time']} </span>"
-                        task_items.append(f"<div class='{css_class}'>{icon} {time_html}{str(t['title'])}</div>")
-                    
-                if task_items:
-                    tasks_html = "".join(task_items)
-                    st.markdown(f"<div class='task-container'>{tasks_html}</div>", unsafe_allow_html=True)
-
-st.divider()
-
-# =================================-------------------------
-# [3단] 이전달 / 일정 검색 / 다음달
-# =================================-------------------------
-col_nav1, col_nav2, col_nav3 = st.columns([1, 2.5, 1])
-
-with col_nav1:
-    if st.button("◀ 이전달", key="btn_prev_month", use_container_width=True):
-        if month == 1:
-            st.session_state.current_month = 12
-            st.session_state.current_year -= 1
-        else:
-            st.session_state.current_month -= 1
-        st.rerun()
-
-with col_nav2:
-    with st.expander("🔍 **일정 검색**", expanded=False):
-        search_query = st.text_input("검색어 입력", placeholder="업무명/회의록 키워드", label_visibility="collapsed")
-        if search_query:
-            all_data = fetch_all_tasks()
-            if not all_data.empty:
-                search_df = all_data[
-                    all_data['title'].astype(str).str.contains(search_query, case=False, na=False) |
-                    all_data['memo'].astype(str).str.contains(search_query, case=False, na=False) |
-                    all_data['meeting_notes'].astype(str).str.contains(search_query, case=False, na=False)
-                ].sort_values(by="task_date", ascending=False)
-            else:
-                search_df = pd.DataFrame()
-
-            if not search_df.empty:
-                st.success(f"총 {len(search_df)}건 검색되었습니다.")
-                for _, s_row in search_df.iterrows():
-                    status_icon = "✅ 완료" if s_row['is_done'] else "⏳ 진행중"
-                    meeting_icon = " [📝 회의]" if s_row['is_meeting'] else ""
-                    st.write(f"• **{s_row['task_date']}** | **[{status_icon}]** {s_row['title']}{meeting_icon}")
-                    if pd.notna(s_row['memo']) and s_row['memo']:
-                        st.caption(f"  - 메모: {s_row['memo']}")
-                    if s_row['is_meeting'] and pd.notna(s_row['meeting_notes']) and s_row['meeting_notes']:
-                        st.caption(f"  - 회의록: {s_row['meeting_notes']}")
-            else:
-                st.warning("검색 결과가 없습니다.")
-
-with col_nav3:
-    if st.button("다음달 ▶", key="btn_next_month", use_container_width=True):
-        if month == 12:
-            st.session_state.current_month = 1
-            st.session_state.current_year += 1
-        else:
-            st.session_state.current_month += 1
-        st.rerun()
-
-st.divider()
-
-# =================================-------------------------
-# [4단] 카드형 대시보드 요약
-# =================================-------------------------
-total_tasks = len(month_df) if not month_df.empty else 0
-
-try:
-    done_tasks = len(month_df[month_df['is_done'].astype(str) == '1']) if total_tasks > 0 else 0
-except Exception:
-    done_tasks = 0
-
-try:
-    meeting_tasks = len(month_df[month_df['is_meeting'].astype(str) == '1']) if total_tasks > 0 else 0
-except Exception:
-    meeting_tasks = 0
-
-completion_rate = round((done_tasks / total_tasks * 100), 1) if total_tasks > 0 else 0.0
-
-kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-
-with kpi1:
-    st.markdown(f"""
-        <div class="kpi-card">
-            <p style="font-size: 12px; font-weight: 700; color: #64748B; margin-bottom: 2px;">월간 총 업무</p>
-            <h3 style="font-size: 20px; font-weight: 800; color: #1E3A8A; margin: 0;">{total_tasks}건</h3>
-        </div>
-    """, unsafe_allow_html=True)
-
-with kpi2:
-    st.markdown(f"""
-        <div class="kpi-card">
-            <p style="font-size: 12px; font-weight: 700; color: #64748B; margin-bottom: 2px;">완료된 업무</p>
-            <h3 style="font-size: 20px; font-weight: 800; color: #166534; margin: 0;">{done_tasks}건</h3>
-        </div>
-    """, unsafe_allow_html=True)
-
-with kpi3:
-    st.markdown(f"""
-        <div class="kpi-card">
-            <p style="font-size: 12px; font-weight: 700; color: #64748B; margin-bottom: 2px;">총 회의 건수</p>
-            <h3 style="font-size: 20px; font-weight: 800; color: #D97706; margin: 0;">{meeting_tasks}건</h3>
-        </div>
-    """, unsafe_allow_html=True)
-
-with kpi4:
-    st.markdown(f"""
-        <div class="kpi-card">
-            <p style="font-size: 12px; font-weight: 700; color: #64748B; margin-bottom: 2px;">이행률 (완료율)</p>
-            <h3 style="font-size: 20px; font-weight: 800; color: #7C3AED; margin: 0;">{completion_rate}%</h3>
-        </div>
-    """, unsafe_allow_html=True)
