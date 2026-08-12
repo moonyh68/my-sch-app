@@ -1,286 +1,274 @@
 import streamlit as st
-import datetime
-import calendar
 import pandas as pd
-from zoneinfo import ZoneInfo
-from streamlit_gsheets import GSheetsConnection
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
-
-# 페이지 기본 설정
-st.set_page_config(page_title="월간 일정표", layout="wide", page_icon="📅")
+import gspread
+from google.oauth2.service_account import Credentials
+import datetime
 
 # ---------------------------------------------------------
-# 대한민국 주요 공휴일 및 대체공휴일 자동 계산 함수
+# 1. Page Configuration & Custom CSS
 # ---------------------------------------------------------
-def get_kr_holidays(year):
-    holidays = {
-        f"{year}-01-01": "신정",
-        f"{year}-03-01": "삼일절",
-        f"{year}-05-05": "어린이날",
-        f"{year}-06-06": "현충일",
-        f"{year}-08-15": "광복절",
-        f"{year}-10-03": "개천절",
-        f"{year}-10-09": "한글날",
-        f"{year}-12-25": "성탄절",
-    }
-    
-    lunar_and_sub_holidays = {
-        2024: {
-            "2024-02-09": "설날 연휴", "2024-02-10": "설날", "2024-02-11": "설날 연휴", "2024-02-12": "대체공휴일",
-            "2024-05-06": "대체공휴일", "2024-05-15": "부처님오신날",
-            "2024-09-16": "추석 연휴", "2024-09-17": "추석", "2024-09-18": "추석 연휴"
-        },
-        2025: {
-            "2025-01-28": "설날 연휴", "2025-01-29": "설날", "2025-01-30": "설날 연휴", "2025-03-03": "대체공휴일",
-            "2025-05-05": "부처님오신날/어린이날", "2025-05-06": "대체공휴일",
-            "2025-10-05": "추석 연휴", "2025-10-06": "추석", "2025-10-07": "추석 연휴", "2025-10-08": "대체공휴일"
-        },
-        2026: {
-            "2026-02-16": "설날 연휴", "2026-02-17": "설날", "2026-02-18": "설날 연휴",
-            "2026-05-24": "부처님오신날", "2026-05-25": "대체공휴일",
-            "2026-08-17": "대체공휴일",
-            "2026-09-24": "추석 연휴", "2026-09-25": "추석", "2026-09-26": "추석 연휴", "2026-09-28": "대체공휴일",
-            "2026-10-05": "대체공휴일"
-        },
-        2027: {
-            "2027-02-06": "설날 연휴", "2027-02-07": "설날", "2027-02-08": "설날 연휴", "2027-02-09": "대체공휴일",
-            "2027-05-13": "부처님오신날",
-            "2027-09-14": "추석 연휴", "2027-09-15": "추석", "2027-09-16": "추석 연휴",
-            "2027-10-04": "대체공휴일", "2027-10-10": "대체공휴일"
-        }
-    }
-    
-    if year in lunar_and_sub_holidays:
-        holidays.update(lunar_and_sub_holidays[year])
-        
-    return holidays
+st.set_page_config(
+    page_title="월간 일정표 관리 시스템",
+    page_icon="📅",
+    layout="wide"
+)
 
-# ---------------------------------------------------------
-# 구글 캘린더 연동 설정
-# ---------------------------------------------------------
-CALENDAR_ID = "moonyh68@gmail.com"
-
-def get_calendar_service():
-    creds_dict = st.secrets["connections"]["gsheets"]
-    credentials = service_account.Credentials.from_service_account_info(
-        creds_dict,
-        scopes=['https://www.googleapis.com/auth/calendar']
-    )
-    return build('calendar', 'v3', credentials=credentials)
-
-def add_google_calendar_event(date_str, start_time_str, end_time_str, title, memo):
-    try:
-        service = get_calendar_service()
-        start_dt = datetime.datetime.strptime(f"{date_str} {start_time_str}", "%Y-%m-%d %H:%M")
-        end_dt = datetime.datetime.strptime(f"{date_str} {end_time_str}", "%Y-%m-%d %H:%M")
-        if end_dt <= start_dt:
-            end_dt += datetime.timedelta(days=1)
-
-        event = {
-            'summary': title,
-            'description': memo if memo else '',
-            'start': {'dateTime': start_dt.strftime("%Y-%m-%dT%H:%M:00"), 'timeZone': 'Asia/Seoul'},
-            'end': {'dateTime': end_dt.strftime("%Y-%m-%dT%H:%M:00"), 'timeZone': 'Asia/Seoul'},
-        }
-
-        created_event = service.events().insert(calendarId=CALENDAR_ID, body=event).execute()
-        return True, str(created_event.get('id', '')), None
-    except Exception as e:
-        return False, "", str(e)
-
-def update_google_calendar_event(event_id, date_str, start_time_str, end_time_str, title, memo):
-    try:
-        service = get_calendar_service()
-        start_dt = datetime.datetime.strptime(f"{date_str} {start_time_str}", "%Y-%m-%d %H:%M")
-        end_dt = datetime.datetime.strptime(f"{date_str} {end_time_str}", "%Y-%m-%d %H:%M")
-        if end_dt <= start_dt:
-            end_dt += datetime.timedelta(days=1)
-
-        event = {
-            'summary': title,
-            'description': memo if memo else '',
-            'start': {'dateTime': start_dt.strftime("%Y-%m-%dT%H:%M:00"), 'timeZone': 'Asia/Seoul'},
-            'end': {'dateTime': end_dt.strftime("%Y-%m-%dT%H:%M:00"), 'timeZone': 'Asia/Seoul'},
-        }
-
-        if event_id and not pd.isna(event_id) and str(event_id).strip() != "":
-            try:
-                service.events().update(calendarId=CALENDAR_ID, eventId=str(event_id).strip(), body=event).execute()
-                return True, str(event_id).strip(), None
-            except Exception:
-                pass
-
-        created_event = service.events().insert(calendarId=CALENDAR_ID, body=event).execute()
-        return True, str(created_event.get('id', '')), None
-    except Exception as e:
-        return False, "", str(e)
-
-def delete_google_calendar_event(event_id):
-    if not event_id or pd.isna(event_id) or str(event_id).strip() == "":
-        return True, None
-    try:
-        service = get_calendar_service()
-        service.events().delete(calendarId=CALENDAR_ID, eventId=str(event_id).strip()).execute()
-        return True, None
-    except Exception as e:
-        return False, str(e)
-
-# ---------------------------------------------------------
-# Custom CSS
-# ---------------------------------------------------------
 st.markdown("""
-    <style>
-    .block-container {
-        padding-top: 1.5rem !important;
-        padding-bottom: 1rem !important;
-        padding-left: 0.5rem !important;
-        padding-right: 0.5rem !important;
-        max-width: 100% !important;
-    }
-    header[data-testid="stHeader"] { background: transparent !important; }
-    hr { margin: 0.5rem 0 !important; border-color: #E2E8F0 !important; }
-    div[data-testid="stColumn"] div[data-testid="stVerticalBlock"] { gap: 0px !important; }
-    div[data-testid="stColumn"] div[data-testid="stElementContainer"] { margin-bottom: 0px !important; }
-
-    div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
-        border-right: 1px solid #E2E8F0 !important; 
-        border-bottom: 1px solid #E2E8F0 !important; 
-        padding: 2px 4px !important;
-        min-height: 80px !important;
-    }
-    div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:first-child {
-        border-left: 1px solid #E2E8F0 !important;
-    }
-
-    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button {
-        background-color: transparent !important;
-        border: none !important;
-        padding: 0px 2px !important;
-        min-height: 18px !important;
-        height: 20px !important;
-        line-height: 20px !important;
-        font-size: 13.5px !important;
-        font-weight: 700 !important;
-        border-radius: 10px !important;
-        box-shadow: none !important;
-        transition: all 0.15s ease-in-out !important;
-        margin-bottom: 1px !important;
-        letter-spacing: normal !important;
-    }
-
-    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button:hover {
-        background-color: #F1F5F9 !important;
-    }
-
-    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[kind="primary"],
-    div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button[kind="primary"] * {
-        background-color: #0284C7 !important;
-        border: none !important;
-        color: #FFFFFF !important;
-        font-weight: 800 !important;
-        border-radius: 10px !important;
-    }
-
-    .task-container {
-        background-color: transparent !important;
-        border: none !important;
-        padding: 0px !important;
-        margin-top: 1px !important;
-        max-height: 120px !important;
-        overflow-y: auto !important;
-    }
-    .task-container::-webkit-scrollbar { width: 3px; }
-    .task-container::-webkit-scrollbar-thumb { background-color: #CBD5E1; border-radius: 3px; }
-
-    .task-item {
-        font-size: 12px !important;
-        font-weight: 500 !important;
-        color: #0F172A !important;
-        line-height: 1.3 !important;
-        margin-bottom: 2px !important;
-        white-space: normal !important;
-        word-break: break-all !important;
-        padding: 2px 4px !important;
-        border-radius: 3px !important;
-        background-color: #F0F9FF !important;
-        border-left: 3px solid #38BDF8 !important;
-    }
-    .task-item-done {
-        background-color: #DCFCE7 !important;
-        border-left: 3px solid #22C55E !important;
-        color: #166534 !important;
-        text-decoration: line-through !important;
-    }
-    .task-item-meeting {
-        background-color: #FEF3C7 !important;
-        border-left: 3px solid #F59E0B !important;
-        color: #92400E !important;
-    }
-
-    .holiday-text-only {
-        font-size: 11.5px !important;
-        font-weight: 800 !important;
-        color: #EF4444 !important;
-        padding: 1px 2px !important;
-        margin-bottom: 2px !important;
-        line-height: 1.2 !important;
-        display: block !important;
-    }
-
-    div.stButton > button[key="btn_prev_month"], 
-    div.stButton > button[key="btn_next_month"] {
-        background-color: #F1F5F9 !important;
-        border: 1px solid #CBD5E1 !important;
-        color: #334155 !important;
-        font-weight: 700 !important;
-        font-size: 12px !important;
-        min-height: 26px !important;
-        height: 28px !important;
-        border-radius: 14px !important;
-        padding: 2px 10px !important;
-    }
-
-    div[data-testid="stFormSubmitButton"] > button {
-        background-color: #166534 !important;
-        color: white !important;
-        font-weight: bold !important;
-        font-size: 14px !important;
-        min-height: 32px !important;
-        border-radius: 6px !important;
-    }
-
+<style>
     .kpi-card {
-        background-color: #FFFFFF !important;
-        border: 1px solid #E2E8F0 !important;
-        border-radius: 8px !important;
-        padding: 6px 10px !important;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.02) !important;
-        text-align: center !important;
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        padding: 15px;
+        border-left: 5px solid #0066cc;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
-
-    @media (max-width: 768px) {
-        .block-container { padding-top: 1.0rem !important; }
-        div[data-testid="stHorizontalBlock"] { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 0px !important; }
-        div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] { width: 14.28% !important; min-width: 0px !important; flex: 1 1 14.28% !important; padding: 1px 1px !important; min-height: 60px !important; }
-        div[data-testid="stHorizontalBlock"] div[data-testid="stColumn"] div.stButton > button { font-size: 10.5px !important; font-weight: 700 !important; min-height: 16px !important; height: 18px !important; line-height: 18px !important; padding: 0px !important; }
-        .task-item { font-size: 9.5px !important; line-height: 1.2 !important; margin-bottom: 1px !important; padding: 1px 2px !important; }
-        .holiday-text-only { font-size: 9.5px !important; padding: 1px 1px !important; }
-        .task-time { display: none !important; }
+    .kpi-title {
+        font-size: 14px;
+        color: #6c757d;
+        margin-bottom: 5px;
     }
-    </style>
+    .kpi-value {
+        font-size: 24px;
+        font-weight: bold;
+        color: #212529;
+    }
+</style>
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 시간 오름차순 정렬 안전 보정 함수
+# 2. Google Sheets API 연동 및 캐싱 처리 (Rate Limit 예방)
 # ---------------------------------------------------------
-def format_sort_time(time_str):
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
+
+@st.cache_resource
+def init_gspread():
+    """구글 시트 API 인증 연결 함수"""
     try:
-        s = str(time_str).strip()
-        if not s or s.lower() == 'nan':
-            return "00:00"
-        if ':' in s:
-            parts = s.split(':')
-            h = int(parts[0]) if parts[0].isdigit() else 0
-            m = int(parts[1]) if parts[1].isdigit() else 0
-            return f"{
+        # Streamlit Secrets에서 인증 정보를 가져옵니다.
+        creds_dict = st.secrets["gcp_service_account"]
+        credentials = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
+        client = gspread.authorize(credentials)
+        return client
+    except Exception as e:
+        st.error(f"구글 인증 실패: Secrets 설정을 확인해 주세요. ({e})")
+        st.stop()
+
+@st.cache_data(ttl=60)
+def load_data_from_sheets():
+    """구글 시트 데이터 가져오기 (1분 캐싱)"""
+    client = init_gspread()
+    try:
+        # DB 시트 이름 지정
+        sheet = client.open("월간일정표_DB").sheet1
+        records = sheet.get_all_records()
+        df = pd.DataFrame(records)
+        
+        # 필수 컬럼 정의 및 결측값 보정
+        required_columns = ["ID", "날짜", "카테고리", "일정명", "상세내용", "담당자", "상태", "비고"]
+        for col in required_columns:
+            if col not in df.columns:
+                df[col] = ""
+                
+        # 데이터 타입 정제 (Zero / Null 처리)
+        if not df.empty:
+            df['날짜'] = pd.to_datetime(df['날짜'], errors='coerce').dt.strftime('%Y-%m-%d')
+            df['날짜'] = df['날짜'].fillna(datetime.date.today().strftime('%Y-%m-%d'))
+        
+        return df
+    except Exception as e:
+        st.warning(f"데이터를 불러오는 중 오류가 발생했거나 시트가 비어있습니다: {e}")
+        return pd.DataFrame(columns=["ID", "날짜", "카테고리", "일정명", "상세내용", "담당자", "상태", "비고"])
+
+def clear_cache_and_rerun():
+    """데이터 변경 시 캐시를 초기화하고 화면을 갱신하는 함수"""
+    st.cache_data.clear()
+    st.rerun()
+
+# ---------------------------------------------------------
+# 3. Main UI Header
+# ---------------------------------------------------------
+st.title("📅 스마트 월간 일정 관리 시스템")
+st.caption("Google Drive 시트 연동 기반 실시간 스케줄 관리자")
+
+df_tasks = load_data_from_sheets()
+
+# ---------------------------------------------------------
+# 4. KPI Summary Dashboards (ZeroDivisionError 검증 완료)
+# ---------------------------------------------------------
+total_tasks = len(df_tasks)
+completed_tasks = len(df_tasks[df_tasks["상태"] == "완료"]) if not df_tasks.empty else 0
+in_progress_tasks = len(df_tasks[df_tasks["상태"] == "진행중"]) if not df_tasks.empty else 0
+
+# 분모 0 에러 예방 조건문 적용
+completion_rate = round((completed_tasks / total_tasks) * 100, 1) if total_tasks > 0 else 0.0
+
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    st.markdown(f"""
+    <div class="kpi-card">
+        <div class="kpi-title">전체 일정</div>
+        <div class="kpi-value">{total_tasks} 건</div>
+    </div>
+    """, unsafe_allow_html=True)
+with col2:
+    st.markdown(f"""
+    <div class="kpi-card" style="border-left-color: #28a745;">
+        <div class="kpi-title">완료된 일정</div>
+        <div class="kpi-value">{completed_tasks} 건</div>
+    </div>
+    """, unsafe_allow_html=True)
+with col3:
+    st.markdown(f"""
+    <div class="kpi-card" style="border-left-color: #ffc107;">
+        <div class="kpi-title">진행중인 일정</div>
+        <div class="kpi-value">{in_progress_tasks} 건</div>
+    </div>
+    """, unsafe_allow_html=True)
+with col4:
+    st.markdown(f"""
+    <div class="kpi-card" style="border-left-color: #17a2b8;">
+        <div class="kpi-title">달성률</div>
+        <div class="kpi-value">{completion_rate} %</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.write("---")
+
+# ---------------------------------------------------------
+# 5. 일정 등록 / 수정 / 삭제 탭 구성
+# ---------------------------------------------------------
+tab1, tab2, tab3 = st.tabs(["📋 일정 조회 및 관리", "➕ 새 일정 추가", "✏️ 일정 수정/삭제"])
+
+# Tab 1: 일정 목록 조회
+with tab1:
+    st.subheader("등록된 일정 목록")
+    if df_tasks.empty:
+        st.info("현재 등록된 일정이 없습니다. [새 일정 추가] 탭에서 등록해 주세요.")
+    else:
+        # 필터링 옵션
+        col_f1, col_f2 = st.columns(2)
+        with col_f1:
+            category_filter = st.multiselect("카테고리 필터", options=df_tasks["카테고리"].unique())
+        with col_f2:
+            status_filter = st.multiselect("상태 필터", options=["대기", "진행중", "완료"])
+
+        filtered_df = df_tasks.copy()
+        if category_filter:
+            filtered_df = filtered_df[filtered_df["카테고리"].isin(category_filter)]
+        if status_filter:
+            filtered_df = filtered_df[filtered_df["상태"].isin(status_filter)]
+
+        st.dataframe(filtered_df, use_container_width=True, hide_index=True)
+
+# Tab 2: 새 일정 등록
+with tab2:
+    st.subheader("신규 일정 등록")
+    with st.form("add_task_form", clear_on_submit=True):
+        col_a1, col_a2 = st.columns(2)
+        with col_a1:
+            new_date = st.date_input("일자", datetime.date.today())
+            new_category = st.selectbox("카테고리", ["회의", "업무", "개인", "기타"])
+            new_title = st.text_input("일정명 (필수)")
+        with col_a2:
+            new_assignee = st.text_input("담당자")
+            new_status = st.selectbox("상태", ["대기", "진행중", "완료"])
+            new_note = st.text_input("비고")
+        
+        new_detail = st.text_area("상세내용")
+        submit_btn = st.form_submit_button("일정 저장하기")
+
+        if submit_btn:
+            if not new_title.strip():
+                st.error("일정명은 필수 입력 항목입니다.")
+            else:
+                try:
+                    client = init_gspread()
+                    sheet = client.open("월간일정표_DB").sheet1
+                    
+                    # 새로운 ID 생성
+                    new_id = len(df_tasks) + 1
+                    new_row = [
+                        new_id,
+                        str(new_date),
+                        new_category,
+                        new_title,
+                        new_detail,
+                        new_assignee,
+                        new_status,
+                        new_note
+                    ]
+                    
+                    sheet.append_row(new_row)
+                    st.success(f"'{new_title}' 일정이 성공적으로 등록되었습니다!")
+                    clear_cache_and_rerun()
+                except Exception as e:
+                    st.error(f"저장 중 오류가 발생했습니다: {e}")
+
+# Tab 3: 일정 수정 및 삭제 (1-based index 매핑 검증 완료)
+with tab3:
+    st.subheader("일정 수정 및 삭제")
+    if df_tasks.empty:
+        st.info("수정/삭제할 데이터가 존재하지 않습니다.")
+    else:
+        task_list = [f"{row['ID']} - [{row['날짜']}] {row['일정명']}" for _, row in df_tasks.iterrows()]
+        selected_task_str = st.selectbox("수정/삭제할 일정을 선택하세요", task_list)
+        
+        selected_id = int(selected_task_str.split(" - ")[0])
+        # 선택한 행 추출
+        selected_row_idx = df_tasks[df_tasks["ID"] == selected_id].index[0]
+        selected_data = df_tasks.loc[selected_row_idx]
+
+        # 구글 시트 실제 행 인덱스 (헤더가 1행이므로 DataFrame index + 2)
+        sheet_row_num = int(selected_row_idx) + 2
+
+        col_e1, col_e2 = st.columns(2)
+        with col_e1:
+            edit_date = st.date_input("일자 변경", datetime.datetime.strptime(str(selected_data["날짜"]), '%Y-%m-%d').date())
+            edit_category = st.selectbox("카테고리 변경", ["회의", "업무", "개인", "기타"], index=["회의", "업무", "개인", "기타"].index(selected_data["카테고리"]) if selected_data["카테고리"] in ["회의", "업무", "개인", "기타"] else 0)
+            edit_title = st.text_input("일정명 변경", value=str(selected_data["일정명"]))
+        with col_e2:
+            edit_assignee = st.text_input("담당자 변경", value=str(selected_data["담당자"]))
+            edit_status = st.selectbox("상태 변경", ["대기", "진행중", "완료"], index=["대기", "진행중", "완료"].index(selected_data["상태"]) if selected_data["상태"] in ["대기", "진행중", "완료"] else 0)
+            edit_note = st.text_input("비고 변경", value=str(selected_data["비고"]))
+
+        edit_detail = st.text_area("상세내용 변경", value=str(selected_data["상세내용"]))
+
+        btn_col1, btn_col2 = st.columns(2)
+        with btn_col1:
+            if st.button("수정 내용 저장"):
+                try:
+                    client = init_gspread()
+                    sheet = client.open("월간일정표_DB").sheet1
+                    
+                    updated_row = [
+                        selected_id,
+                        str(edit_date),
+                        edit_category,
+                        edit_title,
+                        edit_detail,
+                        edit_assignee,
+                        edit_status,
+                        edit_note
+                    ]
+                    
+                    # 시트 업데이트 (1-based index)
+                    sheet.update(f"A{sheet_row_num}:H{sheet_row_num}", [updated_row])
+                    st.success("일정이 수정되었습니다.")
+                    clear_cache_and_rerun()
+                except Exception as e:
+                    st.error(f"수정 실패: {e}")
+
+        with btn_col2:
+            if st.button("선택한 일정 삭제", type="primary"):
+                try:
+                    client = init_gspread()
+                    sheet = client.open("월간일정표_DB").sheet1
+                    
+                    sheet.delete_rows(sheet_row_num)
+                    st.success("일정이 삭제되었습니다.")
+                    clear_cache_and_rerun()
+                except Exception as e:
+                    st.error(f"삭제 실패: {e}")
