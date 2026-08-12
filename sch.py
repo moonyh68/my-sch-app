@@ -2,30 +2,48 @@ import calendar
 import datetime
 from zoneinfo import ZoneInfo
 import streamlit as st
+from google.oauth2 import service_account
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 
 # ==========================================
-# 1. Google Calendar API 연동
+# 1. Google Calendar API 연동 (Secrets 자동 감지)
 # ==========================================
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
 def get_calendar_service():
-    """Google Calendar API 서비스 객체 생성"""
-    creds = None
-    if "credentials" in st.secrets:
-        creds = Credentials.from_authorized_user_info(st.secrets["credentials"], SCOPES)
+    """Streamlit Secrets의 인증 정보를 감지하여 Google Calendar API 서비스 객체 생성"""
     
-    if not creds or not creds.valid:
+    # 1. Secrets에 [connections.gsheets] 서비스 계정이 설정되어 있는 경우
+    if "connections" in st.secrets and "gsheets" in st.secrets["connections"]:
+        sa_info = dict(st.secrets["connections"]["gsheets"])
+        creds = service_account.Credentials.from_service_account_info(
+            sa_info, scopes=SCOPES
+        )
+        return build('calendar', 'v3', credentials=creds)
+
+    # 2. [gcp_service_account] 섹션이 설정되어 있는 경우
+    elif "gcp_service_account" in st.secrets:
+        sa_info = dict(st.secrets["gcp_service_account"])
+        creds = service_account.Credentials.from_service_account_info(
+            sa_info, scopes=SCOPES
+        )
+        return build('calendar', 'v3', credentials=creds)
+
+    # 3. [credentials] OAuth 토큰 섹션이 설정되어 있는 경우
+    elif "credentials" in st.secrets:
+        creds_info = dict(st.secrets["credentials"])
+        creds = Credentials.from_authorized_user_info(creds_info, SCOPES)
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
-            creds = flow.run_local_server(port=0)
-            
-    return build('calendar', 'v3', credentials=creds)
+        return build('calendar', 'v3', credentials=creds)
+
+    else:
+        raise KeyError(
+            "Streamlit Secrets에 인증 정보가 설정되지 않았습니다. "
+            "App settings > Secrets에 [connections.gsheets] 또는 [credentials] 항목을 확인해 주세요."
+        )
 
 # ==========================================
 # 2. zoneinfo 기반 월간 일정 데이터 Fetch
@@ -88,7 +106,6 @@ def render_custom_css_calendar(year, month, events_by_date):
     """
     앱 화면과 동일한 스타일의 CSS Grid 기반 달력 HTML 렌더링
     """
-    # 한국 공휴일 샘플 데이터 (필요 시 API나 라이브러리로 확장 가능)
     holidays = {
         f"{year}-08-15": "광복절",
         f"{year}-08-17": "대체공휴일"
@@ -179,13 +196,11 @@ def render_custom_css_calendar(year, month, events_by_date):
     html.append(f"<div class='calendar-header'>{year}년 {month}월</div>")
     html.append("<div class='calendar-grid'>")
 
-    # 요일 헤더
     day_names = [('일', 'sun'), ('월', ''), ('화', ''), ('수', ''), ('목', ''), ('금', ''), ('토', 'sat')]
     for name, cls in day_names:
         html.append(f"<div class='day-name {cls}'>{name}</div>")
 
-    # 월간 날짜 매트릭스 계산
-    cal = calendar.Calendar(firstweekday=6)  # 일요일 시작
+    cal = calendar.Calendar(firstweekday=6)
     month_days = cal.monthdayscalendar(year, month)
 
     for week in month_days:
@@ -196,7 +211,6 @@ def render_custom_css_calendar(year, month, events_by_date):
 
             date_str = f"{year}-{month:02d}-{day:02d}"
             
-            # 요일 색상 분류
             if day_idx == 0:
                 num_class = "sun"
             elif day_idx == 6:
@@ -204,7 +218,6 @@ def render_custom_css_calendar(year, month, events_by_date):
             else:
                 num_class = "weekday"
 
-            # 공휴일 체크
             holiday_text = holidays.get(date_str, "")
             if holiday_text:
                 num_class = "sun"
@@ -213,7 +226,6 @@ def render_custom_css_calendar(year, month, events_by_date):
 
             html.append("<div class='day-cell'>")
             
-            # 날짜 및 등록 개수 뱃지 표시
             if day_events:
                 html.append(f"<div class='event-badge'>{day}일 [{len(day_events)}]</div>")
             else:
@@ -222,7 +234,6 @@ def render_custom_css_calendar(year, month, events_by_date):
             if holiday_text:
                 html.append(f"<div class='holiday-label'>{holiday_text}</div>")
 
-            # 이벤트 목록 출력
             for ev in day_events:
                 summary = ev.get('summary', '제목 없음')
                 start_raw = ev['start'].get('dateTime')
@@ -243,13 +254,12 @@ def render_custom_css_calendar(year, month, events_by_date):
 def main():
     st.set_page_config(page_title="월간 일정표 앱", layout="wide")
     
-    # 컨트롤러 영역
     today = datetime.date.today()
     c1, c2, c3 = st.columns([1, 1, 2])
     with c1:
         selected_year = st.selectbox("연도 선택", range(2024, 2030), index=2)
     with c2:
-        selected_month = st.selectbox("월 선택", range(1, 13), index=7) # 기본 8월
+        selected_month = st.selectbox("월 선택", range(1, 13), index=7)
     with c3:
         if st.button("🔄 일정 새로고침"):
             st.cache_data.clear()
@@ -257,10 +267,13 @@ def main():
 
     try:
         service = get_calendar_service()
-        raw_events = fetch_monthly_events(service, 'primary', selected_year, selected_month)
+        
+        # 서비스 계정을 사용할 경우 본인의 구글 이메일 주소를 입력하거나, Secrets에서 불러옵니다.
+        calendar_id = st.secrets.get("calendar_id", "primary")
+        
+        raw_events = fetch_monthly_events(service, calendar_id, selected_year, selected_month)
         grouped_events = group_events_by_date(raw_events)
         
-        # 커스텀 CSS 달력 UI 출력
         calendar_html = render_custom_css_calendar(selected_year, selected_month, grouped_events)
         st.markdown(calendar_html, unsafe_allow_html=True)
 
